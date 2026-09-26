@@ -11,10 +11,12 @@ import { lb, pct } from "@/lib/format";
 import { grabList } from "@/lib/grablist";
 import { toteCommunity } from "@/lib/routes";
 import { useAppStore } from "@/lib/store";
+import { useToast } from "@/lib/toast";
 import { TOTE, type Tote } from "@/lib/types";
 
 export default function OrderPickingPage() {
   const store = useAppStore();
+  const toast = useToast();
   const [moveError, setMoveError] = useState<string | null>(null);
 
   if (store.orders.length === 0) {
@@ -95,8 +97,12 @@ export default function OrderPickingPage() {
                   )
                 )
                   return;
-                store.packNow();
+                const r = store.packNow();
                 setMoveError(null);
+                toast.success(
+                  `${r.toteCount} totes packed from ${r.orderCount} orders`,
+                  `avg ${Math.round(r.avgFill)}% full · saves ${r.saved} totes vs one-per-household`,
+                );
               }}
               className="btn btn-primary"
             >
@@ -156,9 +162,16 @@ export default function OrderPickingPage() {
                       ?.cartId
                   }
                   community={multiCommunity ? toteCommunity(tote) : null}
-                  onMove={(orderId, toId) =>
-                    setMoveError(store.moveOrder(orderId, tote.toteId, toId))
-                  }
+                  onMove={(orderId, toId) => {
+                    const err = store.moveOrder(orderId, tote.toteId, toId);
+                    setMoveError(err);
+                    if (err) toast.error("Move blocked", err);
+                    else
+                      toast.success(
+                        `Order ${orderId} moved`,
+                        `${tote.toteId} → ${toId === "new" ? "a new tote" : toId}`,
+                      );
+                  }}
                 />
               ))}
             </div>

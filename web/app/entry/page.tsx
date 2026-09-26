@@ -11,6 +11,7 @@ import { parseOrdersCsv } from "@/lib/csv";
 import { lb } from "@/lib/format";
 import { sampleOrderItems } from "@/lib/sample-data";
 import { STATUS_FLOW, useAppStore } from "@/lib/store";
+import { useToast } from "@/lib/toast";
 import type { Order, OrderItem, OrderStatus } from "@/lib/types";
 
 // Staff re-type orders into the retailer's consumer site one household at
@@ -37,6 +38,7 @@ function retailerListText(order: Order): string {
 
 export default function OrderEntryPage() {
   const store = useAppStore();
+  const toast = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
   const [openOrder, setOpenOrder] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -53,13 +55,26 @@ export default function OrderEntryPage() {
         setUploadError(
           "That file doesn't look like an orders CSV (expected columns like order_id, weight_lb…).",
         );
+        toast.error(
+          "That doesn't look like an orders CSV",
+          "Expected columns like order_id, product_name, weight_lb",
+        );
         return;
       }
       setUploadError(null);
       setBatchFilter(null);
       store.loadItems(good);
+      const orders = new Set(good.map((i) => i.orderId)).size;
+      const batchCount = new Set(good.map((i) => i.batchId || i.orderDate)).size;
+      const communities = [...new Set(good.map((i) => i.destinationCommunity))];
+      const weight = good.reduce((s2, i) => s2 + i.weightLb, 0);
+      toast.success(
+        `${orders} orders loaded`,
+        `${good.length} items · ${batchCount} batch${batchCount === 1 ? "" : "es"} · ${weight.toFixed(0)} lb → ${communities.join(", ")}`,
+      );
     } catch {
       setUploadError("Could not read that file.");
+      toast.error("Could not read that file", "Expected a CSV of order items");
     }
   }
 
@@ -135,8 +150,13 @@ export default function OrderEntryPage() {
             </button>
             <button
               onClick={() => {
-                store.loadItems(sampleOrderItems());
+                const items = sampleOrderItems();
+                store.loadItems(items);
                 setBatchFilter(null);
+                toast.info(
+                  `Sample batch loaded — ${new Set(items.map((i) => i.orderId)).size} orders`,
+                  `${items.length} items over 2 days, one order too big for a single tote`,
+                );
               }}
               className="btn btn-secondary"
             >
@@ -155,8 +175,14 @@ export default function OrderEntryPage() {
             {store.items.length > 0 && (
               <button
                 onClick={() => {
-                  if (confirm("Clear all orders, totes and statuses?"))
-                    store.resetAll();
+                  if (!confirm("Clear all orders, totes and statuses?")) return;
+                  const o = store.orders.length;
+                  const t = store.totes.length;
+                  store.resetAll();
+                  toast.warn(
+                    "Workspace cleared",
+                    `${o} orders, ${t} totes and all statuses removed`,
+                  );
                 }}
                 className="btn btn-danger"
               >
@@ -219,7 +245,13 @@ export default function OrderEntryPage() {
                 className="input ml-auto w-44 px-3 py-1.5 text-xs"
               />
               <button
-                onClick={store.advanceAll}
+                onClick={() => {
+                  const n = store.advanceAll();
+                  toast.success(
+                    n > 0 ? `${n} orders advanced one step` : "Nothing to advance",
+                    n > 0 ? "entered → submitted → picking → picked" : "every order is already picked",
+                  );
+                }}
                 className="btn btn-secondary btn-sm"
               >
                 Advance all one step
@@ -255,7 +287,11 @@ export default function OrderEntryPage() {
                           setOpenOrder(openOrder === o.orderId ? null : o.orderId)
                         }
                         next={next}
-                        onAdvance={() => next && store.setStatus(o.orderId, next)}
+                        onAdvance={() => {
+                          if (!next) return;
+                          store.setStatus(o.orderId, next);
+                          toast.success(`Order ${o.orderId} → ${next}`, `household ${o.householdId}`);
+                        }}
                         onCopy={() => copyOrder(o)}
                         copied={copied === o.orderId}
                         subs={store.substitutions}

@@ -11,11 +11,13 @@ import { lb, pct } from "@/lib/format";
 import { grabList } from "@/lib/grablist";
 import { toteCommunity } from "@/lib/routes";
 import { subKey, useAppStore } from "@/lib/store";
+import { useToast } from "@/lib/toast";
 
 const PICKED_KEY = "zamiigo-picked-v1";
 
 export default function HandheldPickPage() {
   const store = useAppStore();
+  const toast = useToast();
   const [cartId, setCartId] = useState<string | null>(null);
   const [picked, setPicked] = useState<Record<string, boolean>>({});
   const [subEdit, setSubEdit] = useState<string | null>(null);
@@ -103,6 +105,7 @@ export default function HandheldPickPage() {
               const cleared = { ...picked };
               for (const k of keys) delete cleared[k];
               setPicked(cleared);
+              toast.warn(`Cart ${cart.cartId} progress reset`, `${done} picked items unchecked`);
             }}
             className="text-xs text-zinc-400 underline underline-offset-2 hover:text-zinc-200"
           >
@@ -210,6 +213,16 @@ export default function HandheldPickPage() {
                                 e.target.value,
                               );
                               setSubEdit(null);
+                              if (e.target.value.trim())
+                                toast.info(
+                                  `Substitution recorded`,
+                                  `${item.productName} → ${e.target.value.trim()} (order ${c.orderId})`,
+                                );
+                              else if (sub)
+                                toast.info(
+                                  "Substitution cleared",
+                                  `${item.productName} (order ${c.orderId})`,
+                                );
                             }}
                             onKeyDown={(e) => {
                               if (e.key === "Enter")

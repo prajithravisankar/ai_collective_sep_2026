@@ -15,11 +15,13 @@ import { sampleFlightCapacities } from "@/lib/sample-data";
 import CabinMap from "@/components/CabinMap";
 import { computeStacking, STACKING } from "@/lib/stacking";
 import { TOTE_LIFE_FLOW, useAppStore, type ToteLife } from "@/lib/store";
+import { useToast } from "@/lib/toast";
 import { AIRCRAFT, TOTE, type Flight, type Tote } from "@/lib/types";
 
 export default function FlightManagementPage() {
   const store = useAppStore();
   const fileRef = useRef<HTMLInputElement>(null);
+  const toast = useToast();
   const plan = store.plan;
   const [planError, setPlanError] = useState<string | null>(null);
   const [selectedDep, setSelectedDep] = useState<string | null>(null);
@@ -37,17 +39,38 @@ export default function FlightManagementPage() {
 
   function runPlan(capacities: Flight[]) {
     try {
-      store.setPlan(planFlights(store.totes, capacities));
+      const result = planFlights(store.totes, capacities);
+      store.setPlan(result);
       setPlanError(null);
+      const used = result.flights.filter((f) => f.loadedToteIds.length > 0);
+      const assigned = result.flights.reduce(
+        (s2, f) => s2 + f.loadedToteIds.length,
+        0,
+      );
+      toast.success(
+        `${used.length} of ${result.flights.length} departures loaded`,
+        `${assigned}/${store.totes.length} totes assigned` +
+          (result.rolledOverToteIds.length
+            ? ` · ${result.rolledOverToteIds.length} missed every flight`
+            : " · nothing left behind"),
+      );
     } catch (e) {
       store.setPlan(null);
-      setPlanError(e instanceof Error ? e.message : String(e));
+      const msg = e instanceof Error ? e.message : String(e);
+      setPlanError(msg);
+      toast.error("Planning failed", msg);
     }
   }
 
   async function onCapacityFile(file: File | undefined) {
     if (!file) return;
-    store.setCapacities(await parseFlightCapacityCsv(file));
+    const flights = await parseFlightCapacityCsv(file);
+    store.setCapacities(flights);
+    const totalLb = flights.reduce((s2, f) => s2 + f.availablePayloadLb, 0);
+    toast.success(
+      `${flights.length} departure${flights.length === 1 ? "" : "s"} loaded`,
+      `${flights.map((f) => f.departureDate).join(", ")} · ${totalLb.toFixed(0)} lb total payload`,
+    );
   }
 
   if (store.totes.length === 0) {
@@ -115,6 +138,10 @@ export default function FlightManagementPage() {
             <button
               onClick={() => {
                 store.setCapacities([fullCaravan()]);
+                toast.info(
+                  "One full Caravan ready",
+                  "90 totes · 2,877 lb payload · 187.5 cu ft",
+                );
               }}
               className="btn btn-secondary"
             >
@@ -123,6 +150,10 @@ export default function FlightManagementPage() {
             <button
               onClick={() => {
                 store.setCapacities(sampleFlightCapacities());
+                toast.info(
+                  "2 sample departures loaded",
+                  "first one deliberately tight, so rollover shows",
+                );
               }}
               className="btn btn-secondary"
             >
@@ -218,6 +249,10 @@ export default function FlightManagementPage() {
                   rolledOverToteIds: [],
                 });
                 setPlanError(null);
+                toast.success(
+                  `${routePreview.flights.length} flights planned — ${routePreview.chosenLabel}`,
+                  `saves ${routePreview.savedHours.toFixed(2)} h (≈ $${(routePreview.savedHours * store.hourlyCostCad).toFixed(0)}) vs flying separately`,
+                );
               }}
               className="btn btn-primary mt-3"
             >
@@ -357,9 +392,15 @@ export default function FlightManagementPage() {
                   flight={detailFlight}
                   totes={store.totes}
                   onPrint={(kind) => printFlightDoc(kind, detailFlight.departureId)}
-                  onMark={(status) =>
-                    store.markFlightTotes(detailFlight.loadedToteIds, status)
-                  }
+                  onMark={(status) => {
+                    store.markFlightTotes(detailFlight.loadedToteIds, status);
+                    toast.success(
+                      `${detailFlight.loadedToteIds.length} totes → ${status}`,
+                      detailFlight.destination
+                        ? `${detailFlight.departureDate} · ${detailFlight.destination}`
+                        : `departure #${detailFlight.departureId}`,
+                    );
+                  }}
                   lifecycle={store.toteLifecycle}
                   hourlyCost={store.hourlyCostCad}
                   rolledOverToteIds={rolledOnto.get(detailFlight.departureId) ?? []}
@@ -512,6 +553,7 @@ export default function FlightManagementPage() {
 // Returnable totes are assets: "a local partner … brings the totes back".
 function ToteTracker() {
   const store = useAppStore();
+  const toast = useToast();
   const flightOfTote = new Map(
     (store.plan?.flights ?? []).flatMap((f) =>
       f.loadedToteIds.map((id) => [id, f] as const),
@@ -579,12 +621,13 @@ function ToteTracker() {
                       </span>
                       <select
                         value={status}
-                        onChange={(e) =>
+                        onChange={(e) => {
                           store.setToteStatus(
                             t.toteId,
                             e.target.value as ToteLife,
-                          )
-                        }
+                          );
+                          toast.success(`${t.toteId} → ${e.target.value}`);
+                        }}
                         className="input px-2 py-1 text-xs"
                       >
                         {TOTE_LIFE_FLOW.map((st) => (

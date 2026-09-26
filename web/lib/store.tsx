@@ -10,6 +10,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -86,8 +87,13 @@ interface StoreValue extends Persisted {
   carts: Cart[]; // derived from totes + totesPerCart
   loadItems: (items: OrderItem[]) => void;
   setStatus: (orderId: string, status: OrderStatus) => void;
-  advanceAll: () => void;
-  packNow: () => void;
+  advanceAll: () => number;
+  packNow: () => {
+    orderCount: number;
+    toteCount: number;
+    saved: number;
+    avgFill: number;
+  };
   moveOrder: (orderId: string, fromToteId: string, toToteId: string) => string | null;
   setTotesPerCart: (n: number) => void;
   setMaxToteWeightLb: (n: number) => void;
@@ -106,6 +112,9 @@ const StoreContext = createContext<StoreValue | null>(null);
 export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<Persisted>(EMPTY);
   const [hydrated, setHydrated] = useState(false);
+  // Fresh snapshot for actions that return a summary of what they did.
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   // Load once on mount; never on the server.
   useEffect(() => {
@@ -165,37 +174,56 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     setState((s) => ({ ...s, statuses: { ...s.statuses, [orderId]: status } }));
   }, []);
 
-  const advanceAll = useCallback(() => {
+  const advanceAll = useCallback((): number => {
+    let advanced = 0;
     setState((s) => {
       const statuses = { ...s.statuses };
+      advanced = 0;
       for (const o of groupIntoOrders(s.items)) {
         const cur = statuses[o.orderId] ?? "entered";
         const i = STATUS_FLOW.indexOf(cur);
-        if (i < STATUS_FLOW.length - 1) statuses[o.orderId] = STATUS_FLOW[i + 1];
+        if (i < STATUS_FLOW.length - 1) {
+          statuses[o.orderId] = STATUS_FLOW[i + 1];
+          advanced++;
+        }
       }
       return { ...s, statuses };
     });
+    return advanced;
   }, []);
 
-  const packNow = useCallback(() => {
-    setState((s) => {
-      const grouped = groupIntoOrders(s.items).map((o) => ({
-        ...o,
-        status: s.statuses[o.orderId] ?? ("entered" as OrderStatus),
-      }));
-      const baselineToteCount = grouped.reduce(
-        (count, order) =>
-          count + packOrdersIntoTotes([order], s.maxToteWeightLb).length,
-        0,
-      );
-      return {
-        ...s,
-        baselineToteCount,
-        totes: packOrdersByBatch(grouped, s.maxToteWeightLb),
-        plan: null, // repacking changes tote ids
-        toteLifecycle: {},
-      };
-    });
+  const packNow = useCallback((): {
+    orderCount: number;
+    toteCount: number;
+    saved: number;
+    avgFill: number;
+  } => {
+    const s = stateRef.current;
+    const grouped = groupIntoOrders(s.items).map((o) => ({
+      ...o,
+      status: s.statuses[o.orderId] ?? ("entered" as OrderStatus),
+    }));
+    const baselineToteCount = grouped.reduce(
+      (count, order) =>
+        count + packOrdersIntoTotes([order], s.maxToteWeightLb).length,
+      0,
+    );
+    const totes = packOrdersByBatch(grouped, s.maxToteWeightLb);
+    setState((prev) => ({
+      ...prev,
+      baselineToteCount,
+      totes,
+      plan: null, // repacking changes tote ids
+      toteLifecycle: {},
+    }));
+    return {
+      orderCount: grouped.length,
+      toteCount: totes.length,
+      saved: baselineToteCount - totes.length,
+      avgFill: totes.length
+        ? totes.reduce((a, t) => a + t.fillPercent, 0) / totes.length
+        : 0,
+    };
   }, []);
 
   // Manual adjustment: move one order's items from one tote to another

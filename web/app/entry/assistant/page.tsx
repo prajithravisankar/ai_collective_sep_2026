@@ -11,6 +11,7 @@ import { useMemo, useState } from "react";
 import { EmptyState } from "@/components/ui";
 import { lb } from "@/lib/format";
 import { useAppStore } from "@/lib/store";
+import { useToast } from "@/lib/toast";
 import type { Order } from "@/lib/types";
 
 function aggregate(order: Order) {
@@ -26,6 +27,7 @@ function aggregate(order: Order) {
 
 export default function EntryAssistantPage() {
   const store = useAppStore();
+  const toast = useToast();
   const [cursor, setCursor] = useState(0);
   const [typed, setTyped] = useState<Record<string, boolean>>({});
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -200,6 +202,13 @@ export default function EntryAssistantPage() {
                 onClick={() => {
                   store.setStatus(order.orderId, "submitted");
                   setCursor(0);
+                  const left = queue.length - 1;
+                  toast.success(
+                    `Order ${order.orderId} submitted`,
+                    left > 0
+                      ? `${left} order${left === 1 ? "" : "s"} to go in this batch`
+                      : "That was the last one — batch fully entered 🎉",
+                  );
                 }}
                 className="btn btn-primary"
               >
