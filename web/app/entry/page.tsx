@@ -6,7 +6,7 @@
 
 import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
-import { EmptyState, StatusBadge } from "@/components/ui";
+import { EmptyState, STATUS_DOT, StatusBadge } from "@/components/ui";
 import { parseOrdersCsv } from "@/lib/csv";
 import { lb } from "@/lib/format";
 import { sampleOrderItems } from "@/lib/sample-data";
@@ -98,7 +98,10 @@ export default function OrderEntryPage() {
       <div className="print:hidden">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-xl font-bold">Order Entry</h1>
+            <p className="kicker">Step 1 · Orders in</p>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight">
+              Order Entry
+            </h1>
             <p className="mt-1 text-sm text-zinc-400">
               {store.orders.length} household orders in {batches.length}{" "}
               batch{batches.length === 1 ? "" : "es"} — each order stays
@@ -115,7 +118,7 @@ export default function OrderEntryPage() {
             />
             <button
               onClick={() => fileRef.current?.click()}
-              className="rounded bg-emerald-600 px-4 py-2 text-sm font-medium hover:bg-emerald-500"
+              className="btn btn-primary"
             >
               Upload orders CSV
             </button>
@@ -124,15 +127,12 @@ export default function OrderEntryPage() {
                 store.loadItems(sampleOrderItems());
                 setBatchFilter(null);
               }}
-              className="rounded border border-zinc-600 px-4 py-2 text-sm hover:border-zinc-400"
+              className="btn btn-secondary"
             >
               Load sample data
             </button>
             {store.orders.length > 0 && (
-              <button
-                onClick={() => window.print()}
-                className="rounded border border-zinc-600 px-4 py-2 text-sm hover:border-zinc-400"
-              >
+              <button onClick={() => window.print()} className="btn btn-secondary">
                 Print retailer order sheets
               </button>
             )}
@@ -142,7 +142,7 @@ export default function OrderEntryPage() {
                   if (confirm("Clear all orders, totes and statuses?"))
                     store.resetAll();
                 }}
-                className="rounded border border-red-900 px-4 py-2 text-sm text-red-400 hover:border-red-600"
+                className="btn btn-danger"
               >
                 Reset
               </button>
@@ -151,7 +151,7 @@ export default function OrderEntryPage() {
         </div>
 
         {uploadError && (
-          <p className="mt-4 rounded border border-red-800 bg-red-950 px-4 py-2 text-sm text-red-300">
+          <p className="mt-4 rounded-lg border border-red-900/70 bg-red-950/60 px-4 py-2.5 text-sm text-red-300">
             {uploadError}
           </p>
         )}
@@ -183,33 +183,36 @@ export default function OrderEntryPage() {
               </div>
             )}
 
-            <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
+            <div className="mt-4 flex flex-wrap items-center gap-2">
               {counts.map(([s, n]) => (
-                <span key={s} className="flex items-center gap-1.5">
-                  <StatusBadge status={s} />
-                  <span className="text-zinc-400">{n}</span>
+                <span key={s} className="chip cursor-default">
+                  <span
+                    className={`h-1.5 w-1.5 shrink-0 rounded-full ${STATUS_DOT[s]}`}
+                  />
+                  {s}
+                  <span className="font-semibold text-zinc-100">{n}</span>
                 </span>
               ))}
               <button
                 onClick={store.advanceAll}
-                className="ml-auto rounded border border-zinc-600 px-3 py-1.5 text-xs hover:border-zinc-400"
+                className="btn btn-secondary btn-sm ml-auto"
               >
                 Advance all one step
               </button>
             </div>
 
-            <div className="mt-4 overflow-x-auto rounded-lg border border-zinc-800">
+            <div className="mt-4 overflow-x-auto rounded-xl border border-edge">
               <table className="w-full text-sm">
-                <thead className="bg-zinc-950 text-left text-xs uppercase text-zinc-500">
+                <thead className="bg-surface text-left text-[11px] uppercase tracking-wider text-zinc-500">
                   <tr>
-                    <th className="px-3 py-2">Order</th>
-                    <th className="px-3 py-2">Household</th>
-                    <th className="px-3 py-2">Batch</th>
-                    <th className="px-3 py-2">Date</th>
-                    <th className="px-3 py-2 text-right">Items</th>
-                    <th className="px-3 py-2 text-right">Weight</th>
-                    <th className="px-3 py-2">Status</th>
-                    <th className="px-3 py-2" />
+                    <th className="px-4 py-3 font-medium">Order</th>
+                    <th className="px-4 py-3 font-medium">Household</th>
+                    <th className="px-4 py-3 font-medium">Batch</th>
+                    <th className="px-4 py-3 font-medium">Date</th>
+                    <th className="px-4 py-3 text-right font-medium">Items</th>
+                    <th className="px-4 py-3 text-right font-medium">Weight</th>
+                    <th className="px-4 py-3 font-medium">Status</th>
+                    <th className="px-4 py-3" />
                   </tr>
                 </thead>
                 <tbody>
@@ -235,7 +238,10 @@ export default function OrderEntryPage() {
             </div>
             <p className="mt-3 text-xs text-zinc-500">
               Next step: the{" "}
-              <Link href="/picking" className="text-emerald-400 underline">
+              <Link
+                href="/picking"
+                className="text-emerald-400 underline decoration-emerald-400/40 underline-offset-2 hover:text-emerald-300"
+              >
                 Order Picking tab
               </Link>{" "}
               groups these orders into shared totes.
@@ -295,11 +301,7 @@ function BatchChip({
   return (
     <button
       onClick={onClick}
-      className={`rounded-full border px-3 py-1 text-xs ${
-        active
-          ? "border-emerald-400 bg-emerald-950 text-emerald-200"
-          : "border-zinc-700 text-zinc-400 hover:border-zinc-500"
-      }`}
+      className={`chip ${active ? "chip-active" : ""}`}
     >
       {label}
     </button>
@@ -326,26 +328,32 @@ function OrderRow({
   return (
     <>
       <tr
-        className="cursor-pointer border-t border-zinc-800 hover:bg-zinc-800/50"
+        className="cursor-pointer border-t border-edge transition-colors hover:bg-zinc-800/40"
         onClick={onToggle}
       >
-        <td className="px-3 py-2 font-mono text-xs">{order.orderId}</td>
-        <td className="px-3 py-2">{order.householdId}</td>
-        <td className="px-3 py-2 text-zinc-400">{order.batchId}</td>
-        <td className="px-3 py-2 text-zinc-400">{order.orderDate}</td>
-        <td className="px-3 py-2 text-right">{order.items.length}</td>
-        <td className="px-3 py-2 text-right">{lb(order.totalWeightLb)}</td>
-        <td className="px-3 py-2">
+        <td className="px-4 py-3 font-mono text-xs text-zinc-300">
+          {order.orderId}
+        </td>
+        <td className="px-4 py-3">{order.householdId}</td>
+        <td className="px-4 py-3 text-zinc-400">{order.batchId}</td>
+        <td className="px-4 py-3 text-zinc-400">{order.orderDate}</td>
+        <td className="px-4 py-3 text-right tabular-nums">
+          {order.items.length}
+        </td>
+        <td className="px-4 py-3 text-right tabular-nums">
+          {lb(order.totalWeightLb)}
+        </td>
+        <td className="px-4 py-3">
           <StatusBadge status={order.status} />
         </td>
-        <td className="px-3 py-2 text-right">
+        <td className="px-4 py-3 text-right">
           {next && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 onAdvance();
               }}
-              className="rounded border border-zinc-600 px-2 py-1 text-xs hover:border-emerald-400"
+              className="btn btn-secondary btn-sm"
             >
               → {next}
             </button>
@@ -353,16 +361,13 @@ function OrderRow({
         </td>
       </tr>
       {open && (
-        <tr className="border-t border-zinc-800 bg-zinc-950/60">
-          <td colSpan={8} className="px-6 py-3">
+        <tr className="border-t border-edge bg-surface">
+          <td colSpan={8} className="px-6 py-4">
             <div className="mb-2 flex items-center justify-between">
-              <p className="text-xs uppercase text-zinc-500">
+              <p className="kicker">
                 Retailer order entry — household {order.householdId}
               </p>
-              <button
-                onClick={onCopy}
-                className="rounded border border-zinc-600 px-2 py-1 text-xs hover:border-emerald-400"
-              >
+              <button onClick={onCopy} className="btn btn-secondary btn-sm">
                 {copied ? "Copied ✓" : "Copy retailer list"}
               </button>
             </div>

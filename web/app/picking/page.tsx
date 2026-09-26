@@ -18,11 +18,17 @@ export default function OrderPickingPage() {
   if (store.orders.length === 0) {
     return (
       <div>
-        <h1 className="text-xl font-bold">Order Picking</h1>
+        <p className="kicker">Step 2 · Totes packed</p>
+        <h1 className="mt-1 text-2xl font-bold tracking-tight">
+          Order Picking
+        </h1>
         <div className="mt-8">
           <EmptyState title="No orders to pack">
             Load a batch on the{" "}
-            <Link href="/entry" className="text-emerald-400 underline">
+            <Link
+              href="/entry"
+              className="text-emerald-400 underline decoration-emerald-400/40 underline-offset-2 hover:text-emerald-300"
+            >
               Order Entry tab
             </Link>{" "}
             first.
@@ -43,7 +49,10 @@ export default function OrderPickingPage() {
       <div className="print:hidden">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-xl font-bold">Order Picking</h1>
+            <p className="kicker">Step 2 · Totes packed</p>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight">
+              Order Picking
+            </h1>
             <p className="mt-1 text-sm text-zinc-400">
               {store.orders.length} orders
               {store.totes.length > 0 &&
@@ -58,7 +67,7 @@ export default function OrderPickingPage() {
                 min={1}
                 value={store.totesPerCart}
                 onChange={(e) => store.setTotesPerCart(Number(e.target.value))}
-                className="mt-1 block w-20 rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-sm text-zinc-100"
+                className="input mt-1 block w-20"
               />
             </label>
             <label className="text-xs text-zinc-400">
@@ -70,7 +79,7 @@ export default function OrderPickingPage() {
                 onChange={(e) =>
                   store.setMaxToteWeightLb(Number(e.target.value))
                 }
-                className="mt-1 block w-24 rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-sm text-zinc-100"
+                className="input mt-1 block w-24"
               />
             </label>
             <button
@@ -78,7 +87,7 @@ export default function OrderPickingPage() {
                 store.packNow();
                 setMoveError(null);
               }}
-              className="rounded bg-emerald-600 px-4 py-2 text-sm font-medium hover:bg-emerald-500"
+              className="btn btn-primary"
             >
               {store.totes.length ? "Re-pack all totes" : "Pack into totes"}
             </button>
@@ -86,14 +95,11 @@ export default function OrderPickingPage() {
               <>
                 <button
                   onClick={() => window.print()}
-                  className="rounded border border-zinc-600 px-4 py-2 text-sm hover:border-zinc-400"
+                  className="btn btn-secondary"
                 >
                   Print pick lists
                 </button>
-                <Link
-                  href="/picking/handheld"
-                  className="rounded border border-zinc-600 px-4 py-2 text-sm hover:border-zinc-400"
-                >
+                <Link href="/picking/handheld" className="btn btn-secondary">
                   Handheld view
                 </Link>
               </>
@@ -108,7 +114,7 @@ export default function OrderPickingPage() {
         </p>
 
         {moveError && (
-          <p className="mt-4 rounded border border-red-800 bg-red-950 px-4 py-2 text-sm text-red-300">
+          <p className="mt-4 rounded-lg border border-red-900/70 bg-red-950/60 px-4 py-2.5 text-sm text-red-300">
             {moveError}
           </p>
         )}
@@ -139,7 +145,8 @@ export default function OrderPickingPage() {
               ))}
             </div>
 
-            <h2 className="mt-10 text-lg font-semibold">
+            <p className="kicker mt-10">Cart assignment</p>
+            <h2 className="mt-1 text-lg font-semibold">
               Carts ({store.carts.length})
             </h2>
             <p className="mt-1 text-xs text-zinc-500">
@@ -148,10 +155,7 @@ export default function OrderPickingPage() {
             </p>
             <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {store.carts.map((cart) => (
-                <div
-                  key={cart.cartId}
-                  className="rounded-lg border border-zinc-800 bg-zinc-950 p-4"
-                >
+                <div key={cart.cartId} className="card p-4">
                   <p className="font-semibold text-emerald-400">
                     Cart {cart.cartId}
                   </p>
@@ -161,7 +165,7 @@ export default function OrderPickingPage() {
                       return (
                         <li key={id} className="flex justify-between">
                           <span>Tote {id}</span>
-                          <span className="text-zinc-500">
+                          <span className="tabular-nums text-zinc-500">
                             {t ? lb(t.weightLb) : ""}
                           </span>
                         </li>
@@ -247,14 +251,14 @@ function ToteCard({
   onMove: (orderId: string, toToteId: string) => void;
 }) {
   return (
-    <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-4">
+    <div className="card p-4 transition-colors hover:border-edge-strong">
       <div className="flex items-baseline justify-between">
         <p className="font-semibold text-emerald-400">Tote {tote.toteId}</p>
         <p className="text-xs text-zinc-500">
           {cartId ? `Cart ${cartId}` : ""}
         </p>
       </div>
-      <div className="mt-2 flex items-center justify-between text-sm">
+      <div className="mt-2 flex items-center justify-between text-sm tabular-nums">
         <span>{lb(tote.weightLb)}</span>
         <span className="text-zinc-400">{pct(tote.fillPercent)} full</span>
       </div>
@@ -277,7 +281,7 @@ function ToteCard({
             <select
               value=""
               onChange={(e) => e.target.value && onMove(c.orderId, e.target.value)}
-              className="rounded border border-zinc-700 bg-zinc-900 px-1 py-0.5 text-xs text-zinc-300"
+              className="input px-2 py-1 text-xs text-zinc-300"
             >
               <option value="">move…</option>
               {allTotes

@@ -9,7 +9,7 @@ import { useRef, useState } from "react";
 import { EmptyState, FillBar } from "@/components/ui";
 import { parseFlightCapacityCsv } from "@/lib/csv";
 import { planFlights, type LoadPlan } from "@/lib/flights";
-import { cuft, lb, pct } from "@/lib/format";
+import { cuft, lb } from "@/lib/format";
 import { sampleFlightCapacities } from "@/lib/sample-data";
 import CabinMap from "@/components/CabinMap";
 import { computeStacking, STACKING } from "@/lib/stacking";
@@ -42,11 +42,14 @@ export default function FlightManagementPage() {
   if (store.totes.length === 0) {
     return (
       <div>
-        <h1 className="text-xl font-bold">Flight Management</h1>
+        <p className="kicker">Step 3 · Aircraft loaded</p>
+        <h1 className="mt-1 text-2xl font-bold tracking-tight">
+          Flight Management
+        </h1>
         <div className="mt-8">
           <EmptyState title="No totes to load">
             Pack the batch on the{" "}
-            <Link href="/picking" className="text-emerald-400 underline">
+            <Link href="/picking" className="text-emerald-400 underline decoration-emerald-400/40 underline-offset-2 hover:text-emerald-300">
               Order Picking tab
             </Link>{" "}
             first — flight planning uses those exact totes and weights.
@@ -65,7 +68,10 @@ export default function FlightManagementPage() {
       <div className="print:hidden">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-xl font-bold">Flight Management</h1>
+            <p className="kicker">Step 3 · Aircraft loaded</p>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight">
+              Flight Management
+            </h1>
             <p className="mt-1 text-sm text-zinc-400">
               {store.totes.length} totes waiting · {lb(totalW)} ·{" "}
               {cuft(totalVolCuFt)}
@@ -81,7 +87,7 @@ export default function FlightManagementPage() {
             />
             <button
               onClick={() => fileRef.current?.click()}
-              className="rounded border border-zinc-600 px-4 py-2 text-sm hover:border-zinc-400"
+              className="btn btn-secondary"
             >
               Upload capacity CSV (Stage 2)
             </button>
@@ -90,7 +96,7 @@ export default function FlightManagementPage() {
                 store.setCapacities([fullCaravan()]);
                 setPlan(null);
               }}
-              className="rounded border border-zinc-600 px-4 py-2 text-sm hover:border-zinc-400"
+              className="btn btn-secondary"
             >
               One full Caravan (Stage 1)
             </button>
@@ -99,7 +105,7 @@ export default function FlightManagementPage() {
                 store.setCapacities(sampleFlightCapacities());
                 setPlan(null);
               }}
-              className="rounded border border-zinc-600 px-4 py-2 text-sm hover:border-zinc-400"
+              className="btn btn-secondary"
             >
               Sample departures
             </button>
@@ -108,29 +114,29 @@ export default function FlightManagementPage() {
 
         {store.capacities.length > 0 && (
           <>
-            <div className="mt-6 overflow-x-auto rounded-lg border border-zinc-800">
+            <div className="mt-6 overflow-x-auto rounded-xl border border-edge">
               <table className="w-full text-sm">
-                <thead className="bg-zinc-950 text-left text-xs uppercase text-zinc-500">
+                <thead className="bg-surface text-left text-[11px] uppercase tracking-wider text-zinc-500">
                   <tr>
-                    <th className="px-3 py-2">Departure</th>
-                    <th className="px-3 py-2">Date</th>
-                    <th className="px-3 py-2 text-right">Totes</th>
-                    <th className="px-3 py-2 text-right">Payload</th>
-                    <th className="px-3 py-2 text-right">Space</th>
+                    <th className="px-4 py-3 font-medium">Departure</th>
+                    <th className="px-4 py-3 font-medium">Date</th>
+                    <th className="px-4 py-3 text-right font-medium">Totes</th>
+                    <th className="px-4 py-3 text-right font-medium">Payload</th>
+                    <th className="px-4 py-3 text-right font-medium">Space</th>
                   </tr>
                 </thead>
                 <tbody>
                   {store.capacities.map((f) => (
-                    <tr key={f.departureId} className="border-t border-zinc-800">
-                      <td className="px-3 py-2">#{f.departureId}</td>
-                      <td className="px-3 py-2">{f.departureDate}</td>
-                      <td className="px-3 py-2 text-right">
+                    <tr key={f.departureId} className="border-t border-edge transition-colors hover:bg-zinc-800/40">
+                      <td className="px-4 py-3">#{f.departureId}</td>
+                      <td className="px-4 py-3">{f.departureDate}</td>
+                      <td className="px-4 py-3 text-right tabular-nums">
                         {f.availableTotes}
                       </td>
-                      <td className="px-3 py-2 text-right">
+                      <td className="px-4 py-3 text-right tabular-nums">
                         {lb(f.availablePayloadLb)}
                       </td>
-                      <td className="px-3 py-2 text-right">
+                      <td className="px-4 py-3 text-right tabular-nums">
                         {cuft(f.availableVolumeCuFt)}
                       </td>
                     </tr>
@@ -140,7 +146,7 @@ export default function FlightManagementPage() {
             </div>
             <button
               onClick={() => runPlan(store.capacities)}
-              className="mt-4 rounded bg-emerald-600 px-4 py-2 text-sm font-medium hover:bg-emerald-500"
+              className="btn btn-primary mt-4"
             >
               Plan flights
             </button>
@@ -170,7 +176,7 @@ export default function FlightManagementPage() {
               </p>
             </div>
           ) : (
-            <p className="mt-6 rounded border border-red-800 bg-red-950 px-4 py-2 text-sm text-red-300">
+            <p className="mt-6 rounded-lg border border-red-900/70 bg-red-950/60 px-4 py-2.5 text-sm text-red-300">
               Planning failed: {planError}
             </p>
           ))}
@@ -197,14 +203,14 @@ export default function FlightManagementPage() {
 
             <button
               onClick={() => window.print()}
-              className="mt-6 rounded border border-zinc-600 px-4 py-2 text-sm hover:border-zinc-400"
+              className="btn btn-secondary mt-6"
             >
               Print manifests
             </button>
           </>
         )}
 
-        <div className="mt-10 rounded-lg border border-zinc-800 bg-zinc-950 p-4 text-xs text-zinc-400">
+        <div className="card mt-10 p-4 text-xs text-zinc-400">
           <p className="font-semibold text-zinc-300">
             Aircraft, stacking model and sources (stated per the brief)
           </p>
@@ -248,7 +254,7 @@ export default function FlightManagementPage() {
                     href={src.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-emerald-400 underline"
+                    className="text-emerald-400 underline decoration-emerald-400/40 underline-offset-2 hover:text-emerald-300"
                   >
                     {src.label}
                   </a>
@@ -336,12 +342,12 @@ function FlightCard({ flight, totes }: { flight: Flight; totes: Tote[] }) {
   const binding = margins.reduce((a, b) => (b[1] > a[1] ? b : a));
 
   return (
-    <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-4">
+    <div className="card p-4">
       <div className="flex items-baseline justify-between">
         <p className="font-semibold text-emerald-400">
           Departure #{flight.departureId} · {flight.departureDate}
         </p>
-        <span className="rounded bg-zinc-800 px-2 py-0.5 text-xs">
+        <span className="rounded-md border border-edge bg-raised px-2 py-0.5 text-xs">
           {binding[0]}-limited
         </span>
       </div>
@@ -369,7 +375,7 @@ function FlightCard({ flight, totes }: { flight: Flight; totes: Tote[] }) {
       {loaded.length > 0 && (
         <button
           onClick={() => setShowMap(!showMap)}
-          className="mt-2 rounded border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:border-emerald-400"
+          className="btn btn-secondary btn-sm mt-2"
         >
           {showMap ? "Hide cabin map" : "Cabin map (seat-map view)"}
         </button>

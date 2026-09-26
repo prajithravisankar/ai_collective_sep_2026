@@ -40,7 +40,7 @@ export default function CabinMap({ totes }: { totes: Tote[] }) {
     : 0;
 
   return (
-    <div className="mt-3 rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
+    <div className="mt-3 rounded-xl border border-edge bg-surface p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex gap-1">
           {[0, 1, 2, 3].map((l) => (
@@ -50,7 +50,7 @@ export default function CabinMap({ totes }: { totes: Tote[] }) {
               className={`rounded px-2.5 py-1 text-xs ${
                 layer === l
                   ? "bg-emerald-600 font-medium text-white"
-                  : "bg-zinc-800 text-zinc-400 hover:text-white"
+                  : "bg-raised text-zinc-400 hover:text-white"
               }`}
             >
               Layer {l + 1}

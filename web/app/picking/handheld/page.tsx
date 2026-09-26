@@ -40,11 +40,17 @@ export default function HandheldPickPage() {
   if (store.carts.length === 0) {
     return (
       <div className="mx-auto max-w-md">
-        <h1 className="text-xl font-bold">Handheld pick list</h1>
+        <p className="kicker">Order Picking</p>
+        <h1 className="mt-1 text-2xl font-bold tracking-tight">
+          Handheld pick list
+        </h1>
         <div className="mt-6">
           <EmptyState title="No carts yet">
             Pack the batch on the{" "}
-            <Link href="/picking" className="text-emerald-400 underline">
+            <Link
+              href="/picking"
+              className="text-emerald-400 underline decoration-emerald-400/40 underline-offset-2 hover:text-emerald-300"
+            >
               Order Picking tab
             </Link>{" "}
             first, then open this page on the handheld.
@@ -68,11 +74,13 @@ export default function HandheldPickPage() {
   return (
     <div className="mx-auto max-w-md pb-16">
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-xl font-bold">Pick — Cart {cart.cartId}</h1>
+        <h1 className="text-2xl font-bold tracking-tight">
+          Pick — Cart {cart.cartId}
+        </h1>
         <select
           value={cart.cartId}
           onChange={(e) => setCartId(e.target.value)}
-          className="rounded border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+          className="input px-3 py-2"
         >
           {store.carts.map((c) => (
             <option key={c.cartId} value={c.cartId}>
@@ -82,9 +90,9 @@ export default function HandheldPickPage() {
         </select>
       </div>
 
-      <div className="sticky top-0 z-10 mt-3 rounded bg-zinc-950/95 p-3 backdrop-blur">
+      <div className="card sticky top-12 z-10 mt-3 bg-surface/95 p-3 backdrop-blur">
         <div className="flex justify-between text-sm">
-          <span>
+          <span className="tabular-nums">
             {done} / {keys.length} picked
           </span>
           <button
@@ -93,14 +101,14 @@ export default function HandheldPickPage() {
               for (const k of keys) delete cleared[k];
               setPicked(cleared);
             }}
-            className="text-xs text-zinc-400 underline"
+            className="text-xs text-zinc-400 underline underline-offset-2 hover:text-zinc-200"
           >
             reset cart
           </button>
         </div>
-        <div className="mt-2 h-2 overflow-hidden rounded bg-zinc-800">
+        <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-raised">
           <div
-            className="h-full bg-emerald-500 transition-all"
+            className="h-full rounded-full bg-emerald-500 transition-all"
             style={{ width: `${keys.length ? (done / keys.length) * 100 : 0}%` }}
           />
         </div>
@@ -111,7 +119,7 @@ export default function HandheldPickPage() {
         if (!tote) return null;
         return (
           <section key={toteId} className="mt-5">
-            <h2 className="rounded bg-zinc-800 px-3 py-2 text-sm font-bold">
+            <h2 className="rounded-lg border border-edge bg-raised px-3 py-2 text-sm font-bold">
               Tote {toteId} · {lb(tote.weightLb)} · {pct(tote.fillPercent)} full
             </h2>
             {tote.contents.map((c) => (
@@ -130,10 +138,10 @@ export default function HandheldPickPage() {
                           onClick={() =>
                             setPicked((p) => ({ ...p, [k]: !p[k] }))
                           }
-                          className={`flex w-full items-center justify-between gap-3 rounded border px-3 py-3 text-left text-sm ${
+                          className={`flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-3 text-left text-sm transition-colors active:translate-y-px ${
                             isPicked
-                              ? "border-emerald-800 bg-emerald-950/50 text-zinc-500 line-through"
-                              : "border-zinc-700 bg-zinc-950"
+                              ? "border-emerald-900/70 bg-emerald-950/40 text-zinc-500 line-through"
+                              : "border-edge bg-surface hover:border-edge-strong"
                           }`}
                         >
                           <span>{item.productName}</span>
