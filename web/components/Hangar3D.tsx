@@ -9,7 +9,7 @@
 
 import { ContactShadows, Html, Line, Text } from "@react-three/drei";
 import { OrbitControls } from "@react-three/drei";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { computeStacking, STACKING, stackingSlots } from "@/lib/stacking";
@@ -77,22 +77,48 @@ function layoutItems(items: OrderItem[]): {
 
 const ITEM_COLORS = ["#34d399", "#38bdf8", "#fbbf24", "#f472b6", "#a78bfa", "#fb923c"];
 
+// Flies the camera on focus changes, then hands control fully back to
+// OrbitControls — grabbing the mouse mid-flight cancels the animation,
+// so the user can always rotate freely.
 function CameraRig({ focusTarget }: { focusTarget: [number, number, number] | null }) {
-  const target = useRef(new THREE.Vector3(0, CABIN_H / 2, 0));
-  const wanted = useRef(new THREE.Vector3(15, 11, 13));
+  const camera = useThree((st) => st.camera);
+  const controls = useThree((st) => st.controls) as
+    | { target: THREE.Vector3; update: () => void; addEventListener: (e: string, f: () => void) => void; removeEventListener: (e: string, f: () => void) => void }
+    | null;
+  const wantedPos = useRef(new THREE.Vector3(15, 11, 13));
+  const wantedTarget = useRef(new THREE.Vector3(0, CABIN_H / 2, 0));
+  const animating = useRef(false);
+  const mounted = useRef(false);
+
   useEffect(() => {
     if (focusTarget) {
       const p = new THREE.Vector3(...focusTarget);
-      target.current.copy(p);
-      wanted.current.set(p.x + 4.2, p.y + 2.6, p.z + (p.z >= 0 ? 5.2 : -5.2));
-    } else {
-      target.current.set(0, CABIN_H / 2, 0);
-      wanted.current.set(15, 11, 13);
+      wantedTarget.current.copy(p);
+      wantedPos.current.set(p.x + 4.2, p.y + 2.6, p.z + (p.z >= 0 ? 5.2 : -5.2));
+      animating.current = true;
+    } else if (mounted.current) {
+      // fly home only when a focus is cleared, not on first mount
+      wantedTarget.current.set(0, CABIN_H / 2, 0);
+      wantedPos.current.set(15, 11, 13);
+      animating.current = true;
     }
+    mounted.current = true;
   }, [focusTarget]);
-  useFrame(({ camera }) => {
-    camera.position.lerp(wanted.current, 0.05);
-    camera.lookAt(target.current);
+
+  // user grabs the scene -> the animation yields immediately
+  useEffect(() => {
+    if (!controls) return;
+    const stop = () => { animating.current = false; };
+    controls.addEventListener("start", stop);
+    return () => controls.removeEventListener("start", stop);
+  }, [controls]);
+
+  useFrame(() => {
+    if (!animating.current || !controls) return;
+    camera.position.lerp(wantedPos.current, 0.07);
+    controls.target.lerp(wantedTarget.current, 0.09);
+    controls.update();
+    if (camera.position.distanceTo(wantedPos.current) < 0.08) animating.current = false;
   });
   return null;
 }
