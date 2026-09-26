@@ -41,6 +41,7 @@ export default function OrderEntryPage() {
   const [openOrder, setOpenOrder] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [batchFilter, setBatchFilter] = useState<string | null>(null);
+  const [filter, setFilter] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
 
   async function onFile(file: File | undefined) {
@@ -74,9 +75,15 @@ export default function OrderEntryPage() {
     return [...map.entries()].sort((a, b) => a[1].date.localeCompare(b[1].date));
   }, [store.orders]);
 
-  const visibleOrders = batchFilter
-    ? store.orders.filter((o) => o.batchId === batchFilter)
-    : store.orders;
+  const visibleOrders = store.orders.filter((o) => {
+    if (batchFilter && o.batchId !== batchFilter) return false;
+    const needle = filter.trim().toLowerCase();
+    if (!needle) return true;
+    return (
+      o.orderId.toLowerCase().includes(needle) ||
+      o.householdId.toLowerCase().includes(needle)
+    );
+  });
 
   const counts = STATUS_FLOW.map(
     (s) => [s, visibleOrders.filter((o) => o.status === s).length] as const,
@@ -118,7 +125,9 @@ export default function OrderEntryPage() {
             />
             <button
               onClick={() => fileRef.current?.click()}
-              className="btn btn-primary"
+              className={
+                store.orders.length ? "btn btn-secondary" : "btn btn-primary"
+              }
             >
               Upload orders CSV
             </button>
@@ -131,6 +140,11 @@ export default function OrderEntryPage() {
             >
               Load sample data
             </button>
+            {store.orders.length > 0 && (
+              <Link href="/entry/assistant" className="btn btn-primary">
+                Typing assistant →
+              </Link>
+            )}
             {store.orders.length > 0 && (
               <button onClick={() => window.print()} className="btn btn-secondary">
                 Print retailer order sheets
@@ -185,7 +199,10 @@ export default function OrderEntryPage() {
 
             <div className="mt-4 flex flex-wrap items-center gap-2">
               {counts.map(([s, n]) => (
-                <span key={s} className="chip cursor-default">
+                <span
+                  key={s}
+                  className={`chip cursor-default ${n === 0 ? "opacity-40" : ""}`}
+                >
                   <span
                     className={`h-1.5 w-1.5 shrink-0 rounded-full ${STATUS_DOT[s]}`}
                   />
@@ -193,9 +210,15 @@ export default function OrderEntryPage() {
                   <span className="font-semibold text-zinc-100">{n}</span>
                 </span>
               ))}
+              <input
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                placeholder="Filter order / household…"
+                className="input ml-auto w-44 px-3 py-1.5 text-xs"
+              />
               <button
                 onClick={store.advanceAll}
-                className="btn btn-secondary btn-sm ml-auto"
+                className="btn btn-secondary btn-sm"
               >
                 Advance all one step
               </button>

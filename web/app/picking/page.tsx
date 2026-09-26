@@ -85,6 +85,13 @@ export default function OrderPickingPage() {
             </label>
             <button
               onClick={() => {
+                if (
+                  store.totes.length > 0 &&
+                  !confirm(
+                    "Re-packing rebuilds every tote and discards manual moves. Continue?",
+                  )
+                )
+                  return;
                 store.packNow();
                 setMoveError(null);
               }}
@@ -282,58 +289,32 @@ function PackingComparison({
   const reduction = baseline > 0 ? (saved / baseline) * 100 : 0;
   const maxCount = Math.max(baseline, optimized, 1);
 
+  void maxCount;
   return (
-    <section className="mt-6 rounded-lg border border-emerald-800/60 bg-zinc-950 p-5">
-      <h2 className="text-lg font-semibold">What did shared packing save?</h2>
-      <p className="mt-1 text-xs text-zinc-400">
-        Baseline: pack each household order separately using the limits from the
-        last pack. Current: the shared tote plan below, including manual moves.
+    <section className="card mt-5 flex flex-wrap items-center gap-x-6 gap-y-2 border-emerald-800/50 px-4 py-3">
+      <p className="text-sm font-medium">
+        Shared packing saves{" "}
+        <span className="text-lg font-bold text-emerald-400 tabular-nums">
+          {saved} totes
+        </span>{" "}
+        <span className="text-zinc-400">
+          ({reduction.toFixed(0)}% fewer than one-per-household: {baseline} →{" "}
+          {optimized})
+        </span>
       </p>
-
-      <div className="mt-5 space-y-3 text-sm">
-        <div className="grid grid-cols-[8rem_1fr_3rem] items-center gap-3">
-          <span className="text-zinc-400">Isolated baseline</span>
-          <div className="h-4 overflow-hidden rounded bg-zinc-800">
-            <div
-              className="h-full rounded bg-zinc-500"
-              style={{ width: `${(baseline / maxCount) * 100}%` }}
-            />
-          </div>
-          <strong className="text-right tabular-nums">{baseline}</strong>
-        </div>
-        <div className="grid grid-cols-[8rem_1fr_3rem] items-center gap-3">
-          <span className="text-zinc-400">Shared packing</span>
-          <div className="h-4 overflow-hidden rounded bg-zinc-800">
-            <div
-              className={`h-full rounded ${saved < 0 ? "bg-amber-400" : "bg-emerald-400"}`}
-              style={{ width: `${(optimized / maxCount) * 100}%` }}
-            />
-          </div>
-          <strong className="text-right tabular-nums">{optimized}</strong>
-        </div>
-      </div>
-
-      <div className="mt-5 grid gap-3 border-t border-zinc-800 pt-4 sm:grid-cols-3">
-        <div>
-          <p className="text-xs text-zinc-400">Totes saved</p>
-          <p className="text-2xl font-bold tabular-nums">{saved}</p>
-        </div>
-        <div>
-          <p className="text-xs text-zinc-400">Reduction</p>
-          <p className="text-2xl font-bold tabular-nums">
-            {reduction.toFixed(1)}%
-          </p>
-        </div>
-        <div>
-          <p className="text-xs text-zinc-400">Nominal tote capacity saved</p>
-          <p className="text-2xl font-bold tabular-nums">
-            {(saved * TOTE.nominalVolumeCuFt).toFixed(1)}{" "}
-            <span className="text-sm font-normal">cu ft</span>
-          </p>
-        </div>
-      </div>
+      <p className="ml-auto text-xs text-zinc-500">
+        ≈ {(saved * TOTE.nominalVolumeCuFt).toFixed(1)} cu ft of aircraft space
+        freed
+      </p>
     </section>
   );
+}
+
+function splitHint(orderId: string, totes: Tote[]): string {
+  const ids = totes
+    .filter((t) => t.contents.some((c) => c.orderId === orderId))
+    .map((t) => t.toteId);
+  return ids.length > 1 ? `Order ${orderId} spans ${ids.join(" + ")}` : "";
 }
 
 function isSplit(orderId: string, totes: Tote[]): boolean {
@@ -375,12 +356,21 @@ function ToteCard({
             key={c.orderId}
             className="flex items-center justify-between gap-2 text-sm"
           >
-            <span>
-              <span className="font-mono text-xs">{c.orderId}</span>
-              <span className="ml-1 text-zinc-500">
-                ({c.items.length} items
-                {isSplit(c.orderId, allTotes) ? ", split" : ""})
+            <span title={splitHint(c.orderId, allTotes)}>
+              <span className="font-medium">
+                {c.items[0]?.householdId ?? "?"}
               </span>
+              <span className="ml-1.5 font-mono text-[10px] text-zinc-500">
+                {c.orderId}
+              </span>
+              <span className="ml-1 text-zinc-500">
+                · {c.items.length} item{c.items.length === 1 ? "" : "s"}
+              </span>
+              {isSplit(c.orderId, allTotes) && (
+                <span className="ml-1 rounded bg-amber-950/60 px-1 py-0.5 text-[10px] text-amber-400">
+                  split
+                </span>
+              )}
             </span>
             <select
               value=""
