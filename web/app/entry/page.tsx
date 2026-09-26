@@ -230,6 +230,7 @@ export default function OrderEntryPage() {
                         onAdvance={() => next && store.setStatus(o.orderId, next)}
                         onCopy={() => copyOrder(o)}
                         copied={copied === o.orderId}
+                        subs={store.substitutions}
                       />
                     );
                   })}
@@ -273,7 +274,15 @@ export default function OrderEntryPage() {
                 {aggregateItems(o.items).map((r) => (
                   <tr key={r.name} className="border-b border-gray-300">
                     <td className="py-0.5">{r.qty}</td>
-                    <td className="py-0.5">{r.name}</td>
+                    <td className="py-0.5">
+                      {r.name}
+                      {store.substitutions[`${o.orderId}::${r.name}`] && (
+                        <span className="block text-[10px]">
+                          ↺ substituted:{" "}
+                          {store.substitutions[`${o.orderId}::${r.name}`]}
+                        </span>
+                      )}
+                    </td>
                     <td className="py-0.5 text-right">{lb(r.weightLb)}</td>
                   </tr>
                 ))}
@@ -316,6 +325,7 @@ function OrderRow({
   onAdvance,
   onCopy,
   copied,
+  subs,
 }: {
   order: Order;
   open: boolean;
@@ -324,6 +334,7 @@ function OrderRow({
   onAdvance: () => void;
   onCopy: () => void;
   copied: boolean;
+  subs: Record<string, string>;
 }) {
   return (
     <>
@@ -372,16 +383,24 @@ function OrderRow({
               </button>
             </div>
             <ul className="grid gap-1 text-xs text-zinc-300 sm:grid-cols-2">
-              {aggregateItems(order.items).map((r) => (
-                <li key={r.name} className="flex justify-between gap-2">
-                  <span>
-                    {r.qty} × {r.name}
-                  </span>
-                  <span className="shrink-0 text-zinc-500">
-                    {lb(r.weightLb)}
-                  </span>
-                </li>
-              ))}
+              {aggregateItems(order.items).map((r) => {
+                const sub = subs[`${order.orderId}::${r.name}`];
+                return (
+                  <li key={r.name} className="flex justify-between gap-2">
+                    <span>
+                      {r.qty} × {r.name}
+                      {sub && (
+                        <span className="block text-amber-400">
+                          ↺ sub: {sub}
+                        </span>
+                      )}
+                    </span>
+                    <span className="shrink-0 text-zinc-500">
+                      {lb(r.weightLb)}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           </td>
         </tr>

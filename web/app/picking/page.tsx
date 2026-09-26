@@ -218,7 +218,21 @@ export default function OrderPickingPage() {
                           {c.items.map((i, idx) => (
                             <tr key={idx} className="border-b border-gray-300">
                               <td className="w-6 py-0.5">☐</td>
-                              <td className="py-0.5">{i.productName}</td>
+                              <td className="py-0.5">
+                                {i.productName}
+                                {store.substitutions[
+                                  `${c.orderId}::${i.productName}`
+                                ] && (
+                                  <span className="block text-[10px]">
+                                    ↺ substituted:{" "}
+                                    {
+                                      store.substitutions[
+                                        `${c.orderId}::${i.productName}`
+                                      ]
+                                    }
+                                  </span>
+                                )}
+                              </td>
                               <td className="py-0.5 text-right">
                                 {lb(i.weightLb)}
                               </td>

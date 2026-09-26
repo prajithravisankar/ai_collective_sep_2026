@@ -8,7 +8,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { EmptyState } from "@/components/ui";
 import { lb, pct } from "@/lib/format";
-import { useAppStore } from "@/lib/store";
+import { subKey, useAppStore } from "@/lib/store";
 
 const PICKED_KEY = "zamiigo-picked-v1";
 
@@ -16,6 +16,7 @@ export default function HandheldPickPage() {
   const store = useAppStore();
   const [cartId, setCartId] = useState<string | null>(null);
   const [picked, setPicked] = useState<Record<string, boolean>>({});
+  const [subEdit, setSubEdit] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -132,23 +133,67 @@ export default function HandheldPickPage() {
                   {c.items.map((item, idx) => {
                     const k = `${toteId}:${c.orderId}:${idx}`;
                     const isPicked = !!picked[k];
+                    const sKey = subKey(c.orderId, item.productName);
+                    const sub = store.substitutions[sKey];
                     return (
                       <li key={k}>
-                        <button
-                          onClick={() =>
-                            setPicked((p) => ({ ...p, [k]: !p[k] }))
-                          }
-                          className={`flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-3 text-left text-sm transition-colors active:translate-y-px ${
-                            isPicked
-                              ? "border-emerald-900/70 bg-emerald-950/40 text-zinc-500 line-through"
-                              : "border-edge bg-surface hover:border-edge-strong"
-                          }`}
-                        >
-                          <span>{item.productName}</span>
-                          <span className="shrink-0 text-xs text-zinc-500">
-                            {lb(item.weightLb)} {isPicked ? "✓" : ""}
-                          </span>
-                        </button>
+                        <div className="flex items-stretch gap-1.5">
+                          <button
+                            onClick={() =>
+                              setPicked((p) => ({ ...p, [k]: !p[k] }))
+                            }
+                            className={`flex flex-1 items-center justify-between gap-3 rounded-lg border px-3 py-3 text-left text-sm transition-colors active:translate-y-px ${
+                              isPicked
+                                ? "border-emerald-900/70 bg-emerald-950/40 text-zinc-500 line-through"
+                                : "border-edge bg-surface hover:border-edge-strong"
+                            }`}
+                          >
+                            <span>
+                              {item.productName}
+                              {sub && (
+                                <span className="block text-xs text-amber-400 no-underline">
+                                  ↺ sub: {sub}
+                                </span>
+                              )}
+                            </span>
+                            <span className="shrink-0 text-xs text-zinc-500">
+                              {lb(item.weightLb)} {isPicked ? "✓" : ""}
+                            </span>
+                          </button>
+                          <button
+                            onClick={() =>
+                              setSubEdit(subEdit === sKey ? null : sKey)
+                            }
+                            className={`shrink-0 rounded-lg border px-2 text-xs ${
+                              sub
+                                ? "border-amber-700 text-amber-400"
+                                : "border-edge text-zinc-500"
+                            }`}
+                            aria-label="record substitution"
+                          >
+                            ↺
+                          </button>
+                        </div>
+                        {subEdit === sKey && (
+                          <input
+                            autoFocus
+                            defaultValue={sub ?? ""}
+                            placeholder="Store gave instead… (blank = no sub)"
+                            className="input mt-1 w-full px-3 py-2 text-sm"
+                            onBlur={(e) => {
+                              store.setSubstitution(
+                                c.orderId,
+                                item.productName,
+                                e.target.value,
+                              );
+                              setSubEdit(null);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter")
+                                (e.target as HTMLInputElement).blur();
+                            }}
+                          />
+                        )}
                       </li>
                     );
                   })}
