@@ -175,11 +175,15 @@ export function packOrdersByBatch(
 ): Tote[] {
   const byBatch = new Map<string, Order[]>();
   for (const o of orders) {
-    const key = o.batchId || o.orderDate;
+    // A tote flies to exactly one community (bonus objective), and
+    // never mixes release batches (Stage 2).
+    const key = `${o.destinationCommunity}|${o.batchId || o.orderDate}`;
     byBatch.set(key, [...(byBatch.get(key) ?? []), o]);
   }
-  const batches = [...byBatch.values()].sort((a, b) =>
-    a[0].orderDate.localeCompare(b[0].orderDate),
+  const batches = [...byBatch.values()].sort(
+    (a, b) =>
+      a[0].destinationCommunity.localeCompare(b[0].destinationCommunity) ||
+      a[0].orderDate.localeCompare(b[0].orderDate),
   );
   const all: Tote[] = [];
   for (const batch of batches) {

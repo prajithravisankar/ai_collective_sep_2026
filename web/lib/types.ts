@@ -69,6 +69,9 @@ export interface Flight {
   availablePayloadLb: number;
   availableVolumeCuFt: number;
   loadedToteIds: string[];
+  // Bonus (multi-community) fields; absent on Stage 1/2 departures.
+  destination?: string;
+  flightHours?: number;
 }
 
 // Cessna 208B reference numbers (Nakina -> Webequie).
