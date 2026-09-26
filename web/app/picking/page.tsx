@@ -128,6 +128,12 @@ export default function OrderPickingPage() {
           </div>
         ) : (
           <>
+            {store.baselineToteCount !== null && (
+              <PackingComparison
+                baseline={store.baselineToteCount}
+                optimized={store.totes.length}
+              />
+            )}
             <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {store.totes.map((tote) => (
                 <ToteCard
@@ -229,6 +235,71 @@ export default function OrderPickingPage() {
         ))}
       </div>
     </div>
+  );
+}
+
+function PackingComparison({
+  baseline,
+  optimized,
+}: {
+  baseline: number;
+  optimized: number;
+}) {
+  const saved = baseline - optimized;
+  const reduction = baseline > 0 ? (saved / baseline) * 100 : 0;
+  const maxCount = Math.max(baseline, optimized, 1);
+
+  return (
+    <section className="mt-6 rounded-lg border border-emerald-800/60 bg-zinc-950 p-5">
+      <h2 className="text-lg font-semibold">What did shared packing save?</h2>
+      <p className="mt-1 text-xs text-zinc-400">
+        Baseline: pack each household order separately using the limits from the
+        last pack. Current: the shared tote plan below, including manual moves.
+      </p>
+
+      <div className="mt-5 space-y-3 text-sm">
+        <div className="grid grid-cols-[8rem_1fr_3rem] items-center gap-3">
+          <span className="text-zinc-400">Isolated baseline</span>
+          <div className="h-4 overflow-hidden rounded bg-zinc-800">
+            <div
+              className="h-full rounded bg-zinc-500"
+              style={{ width: `${(baseline / maxCount) * 100}%` }}
+            />
+          </div>
+          <strong className="text-right tabular-nums">{baseline}</strong>
+        </div>
+        <div className="grid grid-cols-[8rem_1fr_3rem] items-center gap-3">
+          <span className="text-zinc-400">Shared packing</span>
+          <div className="h-4 overflow-hidden rounded bg-zinc-800">
+            <div
+              className={`h-full rounded ${saved < 0 ? "bg-amber-400" : "bg-emerald-400"}`}
+              style={{ width: `${(optimized / maxCount) * 100}%` }}
+            />
+          </div>
+          <strong className="text-right tabular-nums">{optimized}</strong>
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-3 border-t border-zinc-800 pt-4 sm:grid-cols-3">
+        <div>
+          <p className="text-xs text-zinc-400">Totes saved</p>
+          <p className="text-2xl font-bold tabular-nums">{saved}</p>
+        </div>
+        <div>
+          <p className="text-xs text-zinc-400">Reduction</p>
+          <p className="text-2xl font-bold tabular-nums">
+            {reduction.toFixed(1)}%
+          </p>
+        </div>
+        <div>
+          <p className="text-xs text-zinc-400">Nominal tote capacity saved</p>
+          <p className="text-2xl font-bold tabular-nums">
+            {(saved * TOTE.nominalVolumeCuFt).toFixed(1)}{" "}
+            <span className="text-sm font-normal">cu ft</span>
+          </p>
+        </div>
+      </div>
+    </section>
   );
 }
 

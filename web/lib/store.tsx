@@ -14,7 +14,11 @@ import {
   type ReactNode,
 } from "react";
 import { groupIntoOrders } from "./csv";
-import { assignTotesToCarts, packOrdersByBatch } from "./packing";
+import {
+  assignTotesToCarts,
+  packOrdersByBatch,
+  packOrdersIntoTotes,
+} from "./packing";
 import type {
   Cart,
   Flight,
@@ -38,6 +42,7 @@ interface Persisted {
   items: OrderItem[];
   statuses: Record<string, OrderStatus>;
   totes: Tote[];
+  baselineToteCount: number | null;
   totesPerCart: number;
   maxToteWeightLb: number;
   capacities: Flight[];
@@ -47,6 +52,7 @@ const EMPTY: Persisted = {
   items: [],
   statuses: {},
   totes: [],
+  baselineToteCount: null,
   totesPerCart: 5,
   maxToteWeightLb: TOTE.maxWeightLb,
   capacities: [],
@@ -119,6 +125,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       items,
       statuses: {},
       totes: [], // new batch invalidates old packing
+      baselineToteCount: null,
     }));
   }, []);
 
@@ -144,7 +151,16 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         ...o,
         status: s.statuses[o.orderId] ?? ("entered" as OrderStatus),
       }));
-      return { ...s, totes: packOrdersByBatch(grouped, s.maxToteWeightLb) };
+      const baselineToteCount = grouped.reduce(
+        (count, order) =>
+          count + packOrdersIntoTotes([order], s.maxToteWeightLb).length,
+        0,
+      );
+      return {
+        ...s,
+        baselineToteCount,
+        totes: packOrdersByBatch(grouped, s.maxToteWeightLb),
+      };
     });
   }, []);
 
