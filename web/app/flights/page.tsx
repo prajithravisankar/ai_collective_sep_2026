@@ -13,7 +13,7 @@ import { cuft, lb } from "@/lib/format";
 import { sampleFlightCapacities } from "@/lib/sample-data";
 import CabinMap from "@/components/CabinMap";
 import { computeStacking, STACKING } from "@/lib/stacking";
-import { useAppStore } from "@/lib/store";
+import { TOTE_LIFE_FLOW, useAppStore, type ToteLife } from "@/lib/store";
 import { AIRCRAFT, TOTE, type Flight, type Tote } from "@/lib/types";
 
 export default function FlightManagementPage() {
@@ -21,6 +21,17 @@ export default function FlightManagementPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const plan = store.plan;
   const [planError, setPlanError] = useState<string | null>(null);
+  const [printDoc, setPrintDoc] = useState<
+    { kind: "driver" | "slips"; departureId: string } | null
+  >(null);
+
+  function printFlightDoc(kind: "driver" | "slips", departureId: string) {
+    setPrintDoc({ kind, departureId });
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => setPrintDoc(null), 500);
+    }, 100);
+  }
 
   function runPlan(capacities: Flight[]) {
     try {
@@ -210,7 +221,14 @@ export default function FlightManagementPage() {
           <>
             <div className="mt-6 grid gap-4 lg:grid-cols-2">
               {plan.flights.map((f) => (
-                <FlightCard key={f.departureId} flight={f} totes={store.totes} />
+                <FlightCard
+                  key={f.departureId}
+                  flight={f}
+                  totes={store.totes}
+                  onPrint={(kind) => printFlightDoc(kind, f.departureId)}
+                  onMark={(status) => store.markFlightTotes(f.loadedToteIds, status)}
+                  lifecycle={store.toteLifecycle}
+                />
               ))}
             </div>
 
@@ -293,7 +311,7 @@ export default function FlightManagementPage() {
       </div>
 
       {/* ---------- print: manifest per flight ---------- */}
-      {plan && (
+      {plan && !printDoc && (
         <div className="hidden bg-white p-8 text-black print:block">
           {plan.flights.map((f) => {
             const loaded = f.loadedToteIds
@@ -336,6 +354,218 @@ export default function FlightManagementPage() {
           })}
         </div>
       )}
+
+      {/* ---------- print: driver sheet / household slips ---------- */}
+      {plan && printDoc && (
+        <FlightDocs
+          kind={printDoc.kind}
+          flight={plan.flights.find((f) => f.departureId === printDoc.departureId)}
+          totes={store.totes}
+          substitutions={store.substitutions}
+        />
+      )}
+
+      {/* ---------- tote return tracker ---------- */}
+      {store.totes.length > 0 && (
+        <ToteTracker />
+      )}
+    </div>
+  );
+}
+
+// Returnable totes are assets: "a local partner … brings the totes back".
+function ToteTracker() {
+  const store = useAppStore();
+  const flightOfTote = new Map(
+    (store.plan?.flights ?? []).flatMap((f) =>
+      f.loadedToteIds.map((id) => [id, f] as const),
+    ),
+  );
+  const out = store.totes.filter((t) => {
+    const st = store.toteLifecycle[t.toteId]?.status ?? "packed";
+    return st === "flown" || st === "delivered";
+  }).length;
+  const back = store.totes.filter(
+    (t) => store.toteLifecycle[t.toteId]?.status === "returned",
+  ).length;
+  const days = (at?: number) =>
+    at ? Math.max(0, Math.floor((Date.now() - at) / 86400000)) : 0;
+
+  return (
+    <div className="card mt-10 p-4 print:hidden">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="kicker">Returnable totes</p>
+          <h2 className="mt-1 font-semibold">Tote tracker</h2>
+        </div>
+        <div className="flex gap-2 text-xs">
+          <span className="chip cursor-default">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-400" /> {out} still out
+          </span>
+          <span className="chip cursor-default">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> {back} returned
+          </span>
+        </div>
+      </div>
+      <div className="mt-3 overflow-x-auto rounded-xl border border-edge">
+        <table className="w-full text-sm">
+          <thead className="bg-surface text-left text-[11px] uppercase tracking-wider text-zinc-500">
+            <tr>
+              <th className="px-4 py-2.5 font-medium">Tote</th>
+              <th className="px-4 py-2.5 font-medium">Flight</th>
+              <th className="px-4 py-2.5 font-medium">Status</th>
+              <th className="px-4 py-2.5 text-right font-medium">Days since</th>
+            </tr>
+          </thead>
+          <tbody>
+            {store.totes.map((t) => {
+              const life = store.toteLifecycle[t.toteId];
+              const status = life?.status ?? "packed";
+              const flight = flightOfTote.get(t.toteId);
+              return (
+                <tr key={t.toteId} className="border-t border-edge">
+                  <td className="px-4 py-2 font-mono text-xs">{t.toteId}</td>
+                  <td className="px-4 py-2 text-zinc-400">
+                    {flight ? `#${flight.departureId} · ${flight.departureDate}` : "—"}
+                  </td>
+                  <td className="px-4 py-2">
+                    <select
+                      value={status}
+                      onChange={(e) =>
+                        store.setToteStatus(t.toteId, e.target.value as ToteLife)
+                      }
+                      className="input px-2 py-1 text-xs"
+                    >
+                      {TOTE_LIFE_FLOW.map((st) => (
+                        <option key={st} value={st}>
+                          {st}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-4 py-2 text-right tabular-nums text-zinc-400">
+                    {status === "packed" || status === "returned" ? "—" : `${days(life?.at)}d`}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// Printable docs for the drop-off partner and the households.
+function FlightDocs({
+  kind,
+  flight,
+  totes,
+  substitutions,
+}: {
+  kind: "driver" | "slips";
+  flight: Flight | undefined;
+  totes: Tote[];
+  substitutions: Record<string, string>;
+}) {
+  if (!flight) return null;
+  const loaded = flight.loadedToteIds
+    .map((id) => totes.find((t) => t.toteId === id))
+    .filter((t): t is Tote => !!t);
+
+  // household -> orders/totes/weight
+  const households = new Map<
+    string,
+    { orders: Set<string>; toteIds: Set<string>; weightLb: number; items: { name: string; qty: number; sub?: string }[] }
+  >();
+  for (const t of loaded) {
+    for (const c of t.contents) {
+      const hh = c.items[0]?.householdId ?? "?";
+      const entry =
+        households.get(hh) ?? { orders: new Set(), toteIds: new Set(), weightLb: 0, items: [] };
+      entry.orders.add(c.orderId);
+      entry.toteIds.add(t.toteId);
+      for (const i of c.items) {
+        entry.weightLb += i.weightLb;
+        const existing = entry.items.find((x) => x.name === i.productName);
+        if (existing) existing.qty += 1;
+        else
+          entry.items.push({
+            name: i.productName,
+            qty: 1,
+            sub: substitutions[`${c.orderId}::${i.productName}`],
+          });
+      }
+      households.set(hh, entry);
+    }
+  }
+  const rows = [...households.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+
+  if (kind === "driver")
+    return (
+      <div className="hidden bg-white p-8 text-black print:block">
+        <h1 className="text-xl font-bold">
+          Door-to-door drop-off — Departure #{flight.departureId} · {flight.departureDate}
+        </h1>
+        <p className="text-sm">
+          Webequie · {rows.length} households · {loaded.length} totes (all totes
+          come back)
+        </p>
+        <table className="mt-4 w-full text-sm">
+          <thead>
+            <tr className="border-b border-black text-left">
+              <th className="py-1">Household</th>
+              <th className="py-1">Orders</th>
+              <th className="py-1">Totes</th>
+              <th className="py-1 text-right">Weight</th>
+              <th className="py-1 pl-6">Received (sign)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(([hh, e]) => (
+              <tr key={hh} className="border-b border-gray-300">
+                <td className="py-2 font-semibold">{hh}</td>
+                <td className="py-2">{[...e.orders].join(", ")}</td>
+                <td className="py-2">{[...e.toteIds].join(", ")}</td>
+                <td className="py-2 text-right">{e.weightLb.toFixed(1)} lb</td>
+                <td className="py-2 pl-6 text-gray-400">____________________</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+
+  return (
+    <div className="hidden bg-white p-8 text-black print:block">
+      {rows.map(([hh, e]) => (
+        <section key={hh} className="break-after-page">
+          <h1 className="text-lg font-bold">Your Zamiigo delivery — Household {hh}</h1>
+          <p className="text-sm">
+            Flight #{flight.departureId} · {flight.departureDate} · totes{" "}
+            {[...e.toteIds].join(", ")} · {e.weightLb.toFixed(1)} lb
+          </p>
+          <table className="mt-3 w-full text-sm">
+            <tbody>
+              {e.items.map((i) => (
+                <tr key={i.name} className="border-b border-gray-300">
+                  <td className="w-8 py-0.5">{i.qty}×</td>
+                  <td className="py-0.5">
+                    {i.name}
+                    {i.sub && (
+                      <span className="block text-[10px]">↺ substituted: {i.sub}</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="mt-3 text-xs">
+            Totes are returnable — please hand them back to the driver. Orders:{" "}
+            {[...e.orders].join(", ")}.
+          </p>
+        </section>
+      ))}
     </div>
   );
 }
@@ -351,7 +581,19 @@ function fullCaravan(): Flight {
   };
 }
 
-function FlightCard({ flight, totes }: { flight: Flight; totes: Tote[] }) {
+function FlightCard({
+  flight,
+  totes,
+  onPrint,
+  onMark,
+  lifecycle,
+}: {
+  flight: Flight;
+  totes: Tote[];
+  onPrint: (kind: "driver" | "slips") => void;
+  onMark: (status: "flown" | "delivered") => void;
+  lifecycle: Record<string, { status: string; at: number }>;
+}) {
   const [showMap, setShowMap] = useState(false);
   const loaded = flight.loadedToteIds
     .map((id) => totes.find((t) => t.toteId === id))
@@ -406,6 +648,27 @@ function FlightCard({ flight, totes }: { flight: Flight; totes: Tote[] }) {
         </button>
       )}
       {showMap && loaded.length > 0 && <CabinMap totes={loaded} />}
+      {loaded.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2 border-t border-edge pt-3">
+          <button onClick={() => onPrint("driver")} className="btn btn-secondary btn-sm">
+            Driver drop-off sheet
+          </button>
+          <button onClick={() => onPrint("slips")} className="btn btn-secondary btn-sm">
+            Household slips
+          </button>
+          <span className="mx-1 hidden border-l border-edge sm:block" />
+          <button onClick={() => onMark("flown")} className="btn btn-secondary btn-sm">
+            Mark totes flown
+          </button>
+          <button onClick={() => onMark("delivered")} className="btn btn-secondary btn-sm">
+            Mark delivered
+          </button>
+          <span className="self-center text-[10px] text-zinc-500">
+            {loaded.filter((t) => lifecycle[t.toteId]?.status === "returned").length}
+            /{loaded.length} totes back
+          </span>
+        </div>
+      )}
     </div>
   );
 }
