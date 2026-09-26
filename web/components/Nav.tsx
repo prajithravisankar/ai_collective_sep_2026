@@ -102,7 +102,7 @@ export default function Nav() {
           })}
         </nav>
         <div className="mt-auto border-t border-edge px-4 py-3 text-[10px] leading-relaxed text-zinc-600">
-          Nakina (CYQN) → Webequie (CYWP)
+          Nakina → Webequie · Summer Beaver · Neskantaga
           <br />
           Cessna 208B · freight config
         </div>

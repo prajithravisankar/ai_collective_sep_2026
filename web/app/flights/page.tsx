@@ -9,6 +9,7 @@ import { useRef, useState } from "react";
 import { EmptyState, FillBar } from "@/components/ui";
 import { parseFlightCapacityCsv } from "@/lib/csv";
 import { planFlights } from "@/lib/flights";
+import { planRoutes, routeFor, toteCommunity } from "@/lib/routes";
 import { cuft, lb } from "@/lib/format";
 import { sampleFlightCapacities } from "@/lib/sample-data";
 import CabinMap from "@/components/CabinMap";
@@ -70,6 +71,8 @@ export default function FlightManagementPage() {
 
   const totalW = store.totes.reduce((s, t) => s + t.weightLb, 0);
   const totalVolCuFt = store.totes.length * TOTE.nominalVolumeCuFt;
+  const communities = [...new Set(store.totes.map(toteCommunity))].sort();
+  const routePreview = communities.length > 1 ? planRoutes(store.totes) : null;
 
   return (
     <div>
@@ -118,6 +121,101 @@ export default function FlightManagementPage() {
             </button>
           </div>
         </div>
+
+        {communities.length > 1 && (
+          <div className="card mt-6 p-4">
+            <p className="kicker">Bonus objective · multi-community</p>
+            <h2 className="mt-1 font-semibold">
+              Route planner — {communities.length} communities, one Caravan
+            </h2>
+            <div className="mt-3 overflow-x-auto rounded-xl border border-edge">
+              <table className="w-full min-w-[440px] text-sm">
+                <thead className="bg-surface text-left text-[11px] uppercase tracking-wider text-zinc-500">
+                  <tr>
+                    <th className="px-4 py-2.5 font-medium">Destination</th>
+                    <th className="px-4 py-2.5 font-medium">Airport</th>
+                    <th className="px-4 py-2.5 text-right font-medium">Flight hrs</th>
+                    <th className="px-4 py-2.5 text-right font-medium">Payload</th>
+                    <th className="px-4 py-2.5 text-right font-medium">Load waiting</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {communities.map((c) => {
+                    const r = routeFor(c);
+                    const w = store.totes
+                      .filter((t) => toteCommunity(t) === c)
+                      .reduce((s2, t) => s2 + t.weightLb, 0);
+                    return (
+                      <tr key={c} className="border-t border-edge">
+                        <td className="px-4 py-2">{c}</td>
+                        <td className="px-4 py-2 text-zinc-400">{r.airport}</td>
+                        <td className="px-4 py-2 text-right tabular-nums">
+                          {r.flightHours.toFixed(2)}
+                        </td>
+                        <td className="px-4 py-2 text-right tabular-nums">
+                          {lb(r.payloadLb)}
+                        </td>
+                        <td className="px-4 py-2 text-right tabular-nums">
+                          {lb(w)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {routePreview && (
+              <div className="mt-3 space-y-1 text-xs">
+                <p className="text-zinc-400">
+                  Separate vs combined round trips (fuel by the brief&apos;s own
+                  lb/mile; payload = 3,923 lb − fuel):
+                </p>
+                {routePreview.options.map((o) => (
+                  <p
+                    key={o.label}
+                    className={
+                      o.label === routePreview.chosenLabel
+                        ? "font-medium text-emerald-300"
+                        : o.feasible
+                          ? "text-zinc-400"
+                          : "text-zinc-600 line-through"
+                    }
+                  >
+                    {o.label} → {o.totalHours.toFixed(2)} h · {o.flightsCount}{" "}
+                    flight{o.flightsCount === 1 ? "" : "s"}
+                    {o.label === routePreview.chosenLabel && " ← chosen"}
+                    {o.reason && ` (${o.reason})`}
+                  </p>
+                ))}
+                <p className="pt-1 text-zinc-300">
+                  Best plan saves{" "}
+                  <span className="font-semibold text-emerald-400">
+                    {routePreview.savedHours.toFixed(2)} h
+                  </span>{" "}
+                  (≈ ${(routePreview.savedHours * store.hourlyCostCad).toFixed(0)}
+                  ) vs flying each community separately. Sequence: heaviest
+                  load first; on a two-stop trip the first stop&apos;s totes load
+                  last, nearest the cargo door.
+                </p>
+              </div>
+            )}
+
+            <button
+              onClick={() => {
+                if (!routePreview) return;
+                store.setPlan({
+                  flights: routePreview.flights,
+                  rolledOverToteIds: [],
+                });
+                setPlanError(null);
+              }}
+              className="btn btn-primary mt-3"
+            >
+              Plan routes
+            </button>
+          </div>
+        )}
 
         {store.capacities.length > 0 && (
           <>
@@ -202,7 +300,7 @@ export default function FlightManagementPage() {
           </>
         )}
 
-        {store.capacities.length === 0 && (
+        {store.capacities.length === 0 && communities.length <= 1 && !plan && (
           <div className="mt-8">
             <EmptyState title="No departures yet">
               Upload the Stage 2 flight capacity CSV, or use one full Caravan
@@ -339,7 +437,8 @@ export default function FlightManagementPage() {
                   {f.departureDate}
                 </h1>
                 <p className="text-sm">
-                  Nakina (CYQN) → Webequie (CYWP) · {loaded.length} totes ·{" "}
+                  Nakina (CYQN) → {f.destination ?? "Webequie (CYWP)"} ·{" "}
+                  {loaded.length} totes ·{" "}
                   {lb(w)} of {lb(f.availablePayloadLb)} payload ·{" "}
                   {cuft(loaded.length * TOTE.nominalVolumeCuFt)} of{" "}
                   {cuft(f.availableVolumeCuFt)} · stacked 2 across × 4 high,{" "}
@@ -547,11 +646,12 @@ function FlightDocs({
     return (
       <div className="hidden bg-white p-8 text-black print:block">
         <h1 className="text-xl font-bold">
-          Door-to-door drop-off — Departure #{flight.departureId} · {flight.departureDate}
+          Door-to-door drop-off — {flight.destination ?? "Webequie"} ·{" "}
+          {flight.departureDate}
         </h1>
         <p className="text-sm">
-          Webequie · {rows.length} households · {loaded.length} totes (all totes
-          come back)
+          {flight.destination ?? "Webequie"} · {rows.length} households ·{" "}
+          {loaded.length} totes (all totes come back)
         </p>
         <table className="mt-4 w-full text-sm">
           <thead>
@@ -663,7 +763,9 @@ function FlightCard({
     <div className="card p-4">
       <div className="flex items-baseline justify-between">
         <p className="font-semibold text-emerald-400">
-          Departure #{flight.departureId} · {flight.departureDate}
+          {flight.destination
+            ? `${flight.departureDate} · ${flight.destination}`
+            : `Departure #${flight.departureId} · ${flight.departureDate}`}
         </p>
         <span className="rounded-md border border-edge bg-raised px-2 py-0.5 text-xs">
           {binding[0]}-limited
@@ -695,14 +797,16 @@ function FlightCard({
       {loaded.length > 0 && <StackingLine count={loaded.length} />}
       {loaded.length > 0 && hourlyCost > 0 && (
         <p className="mt-2 text-xs text-zinc-400">
-          Est. flight cost ${(AIRCRAFT.roundTripHours * hourlyCost).toFixed(0)}{" "}
-          ({AIRCRAFT.roundTripHours} h × ${hourlyCost}/h) ÷{" "}
+          Est. flight cost $
+          {((flight.flightHours ?? AIRCRAFT.roundTripHours) * hourlyCost).toFixed(0)}{" "}
+          ({(flight.flightHours ?? AIRCRAFT.roundTripHours).toFixed(2)} h × $
+          {hourlyCost}/h) ÷{" "}
           {new Set(loaded.flatMap((t) => t.contents.map((c) => c.orderId))).size}{" "}
           orders ={" "}
           <span className="text-zinc-200">
             $
             {(
-              (AIRCRAFT.roundTripHours * hourlyCost) /
+              ((flight.flightHours ?? AIRCRAFT.roundTripHours) * hourlyCost) /
               Math.max(
                 1,
                 new Set(loaded.flatMap((t) => t.contents.map((c) => c.orderId)))

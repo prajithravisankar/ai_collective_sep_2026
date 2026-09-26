@@ -75,6 +75,8 @@ export default function OrderEntryPage() {
     return [...map.entries()].sort((a, b) => a[1].date.localeCompare(b[1].date));
   }, [store.orders]);
 
+  const multiCommunity =
+    new Set(store.orders.map((o) => o.destinationCommunity)).size > 1;
   const visibleOrders = store.orders.filter((o) => {
     if (batchFilter && o.batchId !== batchFilter) return false;
     const needle = filter.trim().toLowerCase();
@@ -230,6 +232,9 @@ export default function OrderEntryPage() {
                   <tr>
                     <th className="px-4 py-3 font-medium">Order</th>
                     <th className="px-4 py-3 font-medium">Household</th>
+                    {multiCommunity && (
+                      <th className="px-4 py-3 font-medium">Community</th>
+                    )}
                     <th className="px-4 py-3 font-medium">Batch</th>
                     <th className="px-4 py-3 font-medium">Date</th>
                     <th className="px-4 py-3 text-right font-medium">Items</th>
@@ -254,6 +259,7 @@ export default function OrderEntryPage() {
                         onCopy={() => copyOrder(o)}
                         copied={copied === o.orderId}
                         subs={store.substitutions}
+                        showCommunity={multiCommunity}
                       />
                     );
                   })}
@@ -349,6 +355,7 @@ function OrderRow({
   onCopy,
   copied,
   subs,
+  showCommunity,
 }: {
   order: Order;
   open: boolean;
@@ -358,6 +365,7 @@ function OrderRow({
   onCopy: () => void;
   copied: boolean;
   subs: Record<string, string>;
+  showCommunity: boolean;
 }) {
   return (
     <>
@@ -369,6 +377,11 @@ function OrderRow({
           {order.orderId}
         </td>
         <td className="px-4 py-3">{order.householdId}</td>
+        {showCommunity && (
+          <td className="px-4 py-3 text-zinc-400">
+            {order.destinationCommunity}
+          </td>
+        )}
         <td className="px-4 py-3 text-zinc-400">{order.batchId}</td>
         <td className="px-4 py-3 text-zinc-400">{order.orderDate}</td>
         <td className="px-4 py-3 text-right tabular-nums">
