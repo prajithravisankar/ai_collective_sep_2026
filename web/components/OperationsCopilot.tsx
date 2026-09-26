@@ -17,6 +17,7 @@ export default function OperationsCopilot() {
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [remaining, setRemaining] = useState<number | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
   // The landing page is a static pitch — no operational data to ground on.
@@ -39,8 +40,10 @@ export default function OperationsCopilot() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question, context, history }),
       });
-      const data: { answer?: string; error?: string } = await response.json();
+      const data: { answer?: string; error?: string; remaining?: number } =
+        await response.json();
       if (!response.ok || !data.answer) throw new Error(data.error || "The assistant is unavailable right now.");
+      if (typeof data.remaining === "number") setRemaining(data.remaining);
       setMessages((current) => [...current, { role: "assistant", text: data.answer!, page }]);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "The assistant is unavailable right now.");
@@ -83,7 +86,7 @@ export default function OperationsCopilot() {
               <input aria-label="Ask the Zamiigo copilot" value={draft} onChange={(event) => setDraft(event.target.value)} maxLength={1000} placeholder={`Ask about ${page.toLowerCase()}…`} className="input min-w-0 flex-1 text-sm" />
               <button type="submit" disabled={loading || !draft.trim()} className="btn btn-primary px-3 text-sm disabled:opacity-50">Send</button>
             </form>
-            <p className="mt-2 text-[10px] text-zinc-500">Read-only explanations · Verify plans in the app</p>
+            <p className="mt-2 text-[10px] text-zinc-500">Read-only explanations · Verify plans in the app{remaining !== null ? ` · ${remaining} AI requests left` : ""}</p>
           </div>
         </section>
       )}
