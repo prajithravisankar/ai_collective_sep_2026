@@ -180,12 +180,25 @@ export default function FlightManagementPage() {
               number above and re-plan to see what rolls over.
               {store.capacities.length > 0 && !plan && " Plan is stale — hit Plan flights."}
             </p>
-            <button
-              onClick={() => runPlan(store.capacities)}
-              className="btn btn-primary mt-3"
-            >
-              Plan flights
-            </button>
+            <div className="mt-3 flex flex-wrap items-end gap-3">
+              <button
+                onClick={() => runPlan(store.capacities)}
+                className="btn btn-primary"
+              >
+                Plan flights
+              </button>
+              <label className="text-xs text-zinc-400">
+                Charter cost $/hr (assumption)
+                <input
+                  type="number"
+                  min={0}
+                  step={50}
+                  value={store.hourlyCostCad}
+                  onChange={(e) => store.setHourlyCost(Number(e.target.value))}
+                  className="input mt-1 block w-28 px-2 py-1.5 text-sm"
+                />
+              </label>
+            </div>
           </>
         )}
 
@@ -228,6 +241,7 @@ export default function FlightManagementPage() {
                   onPrint={(kind) => printFlightDoc(kind, f.departureId)}
                   onMark={(status) => store.markFlightTotes(f.loadedToteIds, status)}
                   lifecycle={store.toteLifecycle}
+                  hourlyCost={store.hourlyCostCad}
                 />
               ))}
             </div>
@@ -587,12 +601,14 @@ function FlightCard({
   onPrint,
   onMark,
   lifecycle,
+  hourlyCost,
 }: {
   flight: Flight;
   totes: Tote[];
   onPrint: (kind: "driver" | "slips") => void;
   onMark: (status: "flown" | "delivered") => void;
   lifecycle: Record<string, { status: string; at: number }>;
+  hourlyCost: number;
 }) {
   const [showMap, setShowMap] = useState(false);
   const loaded = flight.loadedToteIds
@@ -639,6 +655,26 @@ function FlightCard({
         {loaded.map((t) => t.toteId).join(", ") || "empty"}
       </p>
       {loaded.length > 0 && <StackingLine count={loaded.length} />}
+      {loaded.length > 0 && hourlyCost > 0 && (
+        <p className="mt-2 text-xs text-zinc-400">
+          Est. flight cost ${(AIRCRAFT.roundTripHours * hourlyCost).toFixed(0)}{" "}
+          ({AIRCRAFT.roundTripHours} h × ${hourlyCost}/h) ÷{" "}
+          {new Set(loaded.flatMap((t) => t.contents.map((c) => c.orderId))).size}{" "}
+          orders ={" "}
+          <span className="text-zinc-200">
+            $
+            {(
+              (AIRCRAFT.roundTripHours * hourlyCost) /
+              Math.max(
+                1,
+                new Set(loaded.flatMap((t) => t.contents.map((c) => c.orderId)))
+                  .size,
+              )
+            ).toFixed(0)}
+            /order
+          </span>
+        </p>
+      )}
       {loaded.length > 0 && (
         <button
           onClick={() => setShowMap(!showMap)}

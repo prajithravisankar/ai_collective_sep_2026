@@ -80,6 +80,7 @@ export interface Flight {
 export const AIRCRAFT = {
   model: "Cessna 208B (freight configuration, no belly pannier)",
   maxTotes: 90, // operator's estimate per the brief; our stacking model says 88
+  roundTripHours: 2.49, // Nakina->Webequie round trip, from the brief
   payloadLb: 2877,
   cargoVolumeCuFt: 90 * (3600 / 1728), // 187.5, matches the capacity data
   cabinWidthIn: 62,
