@@ -22,6 +22,7 @@ export default function FlightManagementPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const plan = store.plan;
   const [planError, setPlanError] = useState<string | null>(null);
+  const [selectedDep, setSelectedDep] = useState<string | null>(null);
   const [printDoc, setPrintDoc] = useState<
     { kind: "driver" | "slips"; departureId: string } | null
   >(null);
@@ -73,6 +74,11 @@ export default function FlightManagementPage() {
   const totalVolCuFt = store.totes.length * TOTE.nominalVolumeCuFt;
   const communities = [...new Set(store.totes.map(toteCommunity))].sort();
   const routePreview = communities.length > 1 ? planRoutes(store.totes) : null;
+  const detailFlight =
+    plan?.flights.find((f) => f.departureId === selectedDep) ??
+    plan?.flights.find((f) => f.loadedToteIds.length > 0) ??
+    plan?.flights[0] ??
+    null;
 
   return (
     <div>
@@ -330,18 +336,30 @@ export default function FlightManagementPage() {
 
         {plan && (
           <>
-            <div className="mt-6 grid gap-4 lg:grid-cols-2">
-              {plan.flights.map((f) => (
+            <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
+              <div className="flex flex-col gap-2 self-start">
+                {plan.flights.map((f) => (
+                  <FlightSummary
+                    key={f.departureId}
+                    flight={f}
+                    totes={store.totes}
+                    active={f.departureId === detailFlight?.departureId}
+                    onSelect={() => setSelectedDep(f.departureId)}
+                  />
+                ))}
+              </div>
+              {detailFlight && (
                 <FlightCard
-                  key={f.departureId}
-                  flight={f}
+                  flight={detailFlight}
                   totes={store.totes}
-                  onPrint={(kind) => printFlightDoc(kind, f.departureId)}
-                  onMark={(status) => store.markFlightTotes(f.loadedToteIds, status)}
+                  onPrint={(kind) => printFlightDoc(kind, detailFlight.departureId)}
+                  onMark={(status) =>
+                    store.markFlightTotes(detailFlight.loadedToteIds, status)
+                  }
                   lifecycle={store.toteLifecycle}
                   hourlyCost={store.hourlyCostCad}
                 />
-              ))}
+              )}
             </div>
 
             {plan.rolledOverToteIds.length > 0 && (
@@ -723,6 +741,54 @@ function fullCaravan(): Flight {
   };
 }
 
+// Compact, clickable departure row for the master-detail layout:
+// enough to compare flights at a glance, click for the full picture.
+function FlightSummary({
+  flight,
+  totes,
+  active,
+  onSelect,
+}: {
+  flight: Flight;
+  totes: Tote[];
+  active: boolean;
+  onSelect: () => void;
+}) {
+  const loaded = flight.loadedToteIds
+    .map((id) => totes.find((t) => t.toteId === id))
+    .filter((t): t is Tote => !!t);
+  const w = loaded.reduce((s, t) => s + t.weightLb, 0);
+  const pctUsed = flight.availablePayloadLb
+    ? Math.min(100, (w / flight.availablePayloadLb) * 100)
+    : 0;
+  return (
+    <button
+      onClick={onSelect}
+      className={`card w-full p-3 text-left transition-colors ${
+        active
+          ? "border-emerald-500/70 bg-emerald-500/5"
+          : "hover:border-edge-strong"
+      }`}
+    >
+      <div className="flex items-baseline justify-between gap-2">
+        <p className={`text-sm font-semibold ${active ? "text-emerald-300" : ""}`}>
+          {flight.destination
+            ? `${flight.departureDate} · ${flight.destination}`
+            : `#${flight.departureId} · ${flight.departureDate}`}
+        </p>
+        <span className="text-xs text-zinc-500">{loaded.length} totes</span>
+      </div>
+      <div className="mt-2">
+        <FillBar value={pctUsed} />
+      </div>
+      <p className="mt-1.5 text-xs text-zinc-500">
+        {lb(w)} of {lb(flight.availablePayloadLb)} ·{" "}
+        {Math.round(pctUsed)}% payload
+      </p>
+    </button>
+  );
+}
+
 function FlightCard({
   flight,
   totes,
@@ -738,7 +804,6 @@ function FlightCard({
   lifecycle: Record<string, { status: string; at: number }>;
   hourlyCost: number;
 }) {
-  const [showMap, setShowMap] = useState(false);
   const loaded = flight.loadedToteIds
     .map((id) => totes.find((t) => t.toteId === id))
     .filter((t): t is Tote => !!t);
@@ -817,15 +882,7 @@ function FlightCard({
           </span>
         </p>
       )}
-      {loaded.length > 0 && (
-        <button
-          onClick={() => setShowMap(!showMap)}
-          className="btn btn-secondary btn-sm mt-2"
-        >
-          {showMap ? "Hide cabin map" : "Cabin map (seat-map view)"}
-        </button>
-      )}
-      {showMap && loaded.length > 0 && <CabinMap totes={loaded} />}
+      {loaded.length > 0 && <CabinMap totes={loaded} />}
       {loaded.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-2 border-t border-edge pt-3">
           <button onClick={() => onPrint("driver")} className="btn btn-secondary btn-sm">
