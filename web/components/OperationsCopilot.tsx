@@ -15,6 +15,7 @@ import { buildAIContext, copilotPage, copilotSuggestions } from "@/lib/ai-contex
 import { executeTool, validateProposal, type Proposal } from "@/lib/ai-tools";
 import { planFlights } from "@/lib/flights";
 import { useAppStore } from "@/lib/store";
+import { emitSceneEvent } from "@/lib/scene-bus";
 import { useToast } from "@/lib/toast";
 import {
   speak,
@@ -131,6 +132,26 @@ export default function OperationsCopilot() {
           setAgentStatus(status);
           const result = executeTool({ tool: data.tool, args: data.args ?? {} }, store);
           steps.push({ tool: data.tool, args: data.args ?? {}, result });
+          // steer the 3D hangar (no-op unless that page is mounted)
+          try {
+            const parsed = JSON.parse(result);
+            if (data.tool === "toteDetail" && parsed.toteId) {
+              emitSceneEvent({ type: "focusTote", toteId: parsed.toteId });
+            } else if (data.tool === "lookupOrder" && Array.isArray(parsed)) {
+              const toteIds = parsed.flatMap((o: { totes?: string[] }) => o.totes ?? []);
+              if (toteIds.length === 1) {
+                emitSceneEvent({ type: "focusTote", toteId: toteIds[0] });
+              } else if (toteIds.length > 1) {
+                emitSceneEvent({
+                  type: "focusTotes",
+                  toteIds,
+                  label: `Household ${parsed[0]?.householdId ?? ""} — ${toteIds.length} totes`,
+                });
+              }
+            }
+          } catch {
+            /* tool errored; nothing to steer */
+          }
           const failed = result.startsWith('{"error"');
           setMessages((cur) => [
             ...cur,

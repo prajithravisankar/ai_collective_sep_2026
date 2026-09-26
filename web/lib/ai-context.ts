@@ -10,6 +10,7 @@ export function copilotPage(pathname: string) {
   if (pathname.startsWith("/flights")) return "Flight Management";
   if (pathname.startsWith("/dashboard")) return "Data Dashboard";
   if (pathname.startsWith("/track")) return "Order Tracking";
+  if (pathname.startsWith("/hangar")) return "3D Hangar";
   return "Overview";
 }
 
@@ -19,6 +20,7 @@ const suggestions: Record<string, string[]> = {
   "Flight Management": ["What if departure 1 loses 200 lb?", "Which constraint is limiting us?", "Which orders rolled over?", "Summarize the flight plan."],
   "Data Dashboard": ["What are the main insights?", "Which products are heaviest?", "Which day had the most orders?"],
   "Order Tracking": ["How can I track an order?", "Which orders are still being picked?", "Are any orders awaiting a flight?"],
+  "3D Hangar": ["What's inside tote T8?", "Which tote is the heaviest?", "Where are household 617's groceries?"],
   Overview: ["What does Zamiigo do?", "What is the current batch status?", "How does the workflow work?"],
 };
 
