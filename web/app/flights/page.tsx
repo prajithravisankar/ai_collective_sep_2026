@@ -8,7 +8,7 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 import { EmptyState, FillBar } from "@/components/ui";
 import { parseFlightCapacityCsv } from "@/lib/csv";
-import { planFlights } from "@/lib/flights";
+import { planFlights, rolledOverOnto } from "@/lib/flights";
 import { planRoutes, routeFor, toteCommunity } from "@/lib/routes";
 import { cuft, lb } from "@/lib/format";
 import { sampleFlightCapacities } from "@/lib/sample-data";
@@ -74,6 +74,9 @@ export default function FlightManagementPage() {
   const totalVolCuFt = store.totes.length * TOTE.nominalVolumeCuFt;
   const communities = [...new Set(store.totes.map(toteCommunity))].sort();
   const routePreview = communities.length > 1 ? planRoutes(store.totes) : null;
+  const rolledOnto = plan
+    ? rolledOverOnto(plan, store.totes)
+    : new Map<string, string[]>();
   const detailFlight =
     plan?.flights.find((f) => f.departureId === selectedDep) ??
     plan?.flights.find((f) => f.loadedToteIds.length > 0) ??
@@ -344,6 +347,7 @@ export default function FlightManagementPage() {
                     flight={f}
                     totes={store.totes}
                     active={f.departureId === detailFlight?.departureId}
+                    rolledOverCount={rolledOnto.get(f.departureId)?.length ?? 0}
                     onSelect={() => setSelectedDep(f.departureId)}
                   />
                 ))}
@@ -358,6 +362,7 @@ export default function FlightManagementPage() {
                   }
                   lifecycle={store.toteLifecycle}
                   hourlyCost={store.hourlyCostCad}
+                  rolledOverToteIds={rolledOnto.get(detailFlight.departureId) ?? []}
                 />
               )}
             </div>
@@ -747,11 +752,13 @@ function FlightSummary({
   flight,
   totes,
   active,
+  rolledOverCount,
   onSelect,
 }: {
   flight: Flight;
   totes: Tote[];
   active: boolean;
+  rolledOverCount: number;
   onSelect: () => void;
 }) {
   const loaded = flight.loadedToteIds
@@ -784,6 +791,9 @@ function FlightSummary({
       <p className="mt-1.5 text-xs text-zinc-500">
         {lb(w)} of {lb(flight.availablePayloadLb)} ·{" "}
         {Math.round(pctUsed)}% payload
+        {rolledOverCount > 0 && (
+          <span className="text-amber-400"> · {rolledOverCount} rolled over</span>
+        )}
       </p>
     </button>
   );
@@ -796,6 +806,7 @@ function FlightCard({
   onMark,
   lifecycle,
   hourlyCost,
+  rolledOverToteIds = [],
 }: {
   flight: Flight;
   totes: Tote[];
@@ -803,6 +814,7 @@ function FlightCard({
   onMark: (status: "flown" | "delivered") => void;
   lifecycle: Record<string, { status: string; at: number }>;
   hourlyCost: number;
+  rolledOverToteIds?: string[];
 }) {
   const loaded = flight.loadedToteIds
     .map((id) => totes.find((t) => t.toteId === id))
@@ -859,6 +871,20 @@ function FlightCard({
           .sort((a, b) => Number(a.slice(1)) - Number(b.slice(1)))
           .join(", ") || "empty"}
       </p>
+      {rolledOverToteIds.length > 0 && (
+        <p className="mt-3 rounded-lg border border-amber-900/60 bg-amber-950/30 px-3 py-2 text-xs text-amber-300">
+          Rolled over from an earlier departure:{" "}
+          {rolledOverToteIds.join(", ")} (
+          {
+            new Set(
+              loaded
+                .filter((t) => rolledOverToteIds.includes(t.toteId))
+                .flatMap((t) => t.contents.map((c) => c.orderId)),
+            ).size
+          }{" "}
+          orders waited for this flight)
+        </p>
+      )}
       {loaded.length > 0 && <StackingLine count={loaded.length} />}
       {loaded.length > 0 && hourlyCost > 0 && (
         <p className="mt-2 text-xs text-zinc-400">

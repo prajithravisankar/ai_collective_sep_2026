@@ -9,6 +9,7 @@ import { useState } from "react";
 import { EmptyState, FillBar } from "@/components/ui";
 import { lb, pct } from "@/lib/format";
 import { grabList } from "@/lib/grablist";
+import { toteCommunity } from "@/lib/routes";
 import { useAppStore } from "@/lib/store";
 import { TOTE, type Tote } from "@/lib/types";
 
@@ -40,6 +41,8 @@ export default function OrderPickingPage() {
   }
 
   const totalWeight = store.totes.reduce((s, t) => s + t.weightLb, 0);
+  const multiCommunity =
+    new Set(store.orders.map((o) => o.destinationCommunity)).size > 1;
   const avgFill = store.totes.length
     ? store.totes.reduce((s, t) => s + t.fillPercent, 0) / store.totes.length
     : 0;
@@ -152,6 +155,7 @@ export default function OrderPickingPage() {
                     store.carts.find((c) => c.toteIds.includes(tote.toteId))
                       ?.cartId
                   }
+                  community={multiCommunity ? toteCommunity(tote) : null}
                   onMove={(orderId, toId) =>
                     setMoveError(store.moveOrder(orderId, tote.toteId, toId))
                   }
@@ -230,6 +234,7 @@ export default function OrderPickingPage() {
                   <h2 className="border-b border-black text-base font-bold">
                     Tote {toteId} — {lb(tote.weightLb)} · {pct(tote.fillPercent)}{" "}
                     full
+                    {multiCommunity && ` · ${toteCommunity(tote)}`}
                   </h2>
                   {tote.contents.map((c) => (
                     <div key={c.orderId} className="mt-2 pl-2">
@@ -328,17 +333,26 @@ function ToteCard({
   tote,
   allTotes,
   cartId,
+  community,
   onMove,
 }: {
   tote: Tote;
   allTotes: Tote[];
   cartId?: string;
+  community: string | null;
   onMove: (orderId: string, toToteId: string) => void;
 }) {
   return (
     <div className="card p-4 transition-colors hover:border-edge-strong">
       <div className="flex items-baseline justify-between">
-        <p className="font-semibold text-emerald-400">Tote {tote.toteId}</p>
+        <p className="font-semibold text-emerald-400">
+          Tote {tote.toteId}
+          {community && (
+            <span className="ml-2 rounded bg-sky-950/70 px-1.5 py-0.5 text-[10px] font-normal text-sky-300">
+              {community}
+            </span>
+          )}
+        </p>
         <p className="text-xs text-zinc-500">
           {cartId ? `Cart ${cartId}` : ""}
         </p>

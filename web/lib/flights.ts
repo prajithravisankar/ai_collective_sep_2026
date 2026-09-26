@@ -82,3 +82,30 @@ export function planFlights(totes: Tote[], flights: Flight[]): LoadPlan {
       .flatMap((g) => g.totes.map((t) => t.toteId)),
   };
 }
+
+// Stage 2 brief: "show ... which orders roll over to the next departure".
+// A tote "rolled over" onto a flight when it was ready in time for an
+// earlier departure in the plan but only flew on this one.
+// (Skipped for bonus route legs, which have no dates.)
+export function rolledOverOnto(
+  plan: LoadPlan,
+  totes: Tote[],
+): Map<string, string[]> {
+  const byId = new Map(totes.map((t) => [t.toteId, t]));
+  const dated = [...plan.flights]
+    .filter((f) => !f.destination)
+    .sort((a, b) => a.departureDate.localeCompare(b.departureDate));
+  const map = new Map<string, string[]>();
+  dated.forEach((f, i) => {
+    if (i === 0) return;
+    const earlierDates = dated.slice(0, i).map((x) => x.departureDate);
+    const rolled = f.loadedToteIds.filter((id) => {
+      const tote = byId.get(id);
+      if (!tote) return false;
+      const ready = toteReadyDate(tote);
+      return ready !== "" && earlierDates.some((d) => ready <= d);
+    });
+    if (rolled.length) map.set(f.departureId, rolled);
+  });
+  return map;
+}

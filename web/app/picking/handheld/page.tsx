@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { EmptyState } from "@/components/ui";
 import { lb, pct } from "@/lib/format";
 import { grabList } from "@/lib/grablist";
+import { toteCommunity } from "@/lib/routes";
 import { subKey, useAppStore } from "@/lib/store";
 
 const PICKED_KEY = "zamiigo-picked-v1";

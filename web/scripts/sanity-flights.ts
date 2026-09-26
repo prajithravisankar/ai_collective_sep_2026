@@ -9,7 +9,7 @@ import {
   parseFlightCapacityCsvText,
   parseOrdersCsvText,
 } from "../lib/csv";
-import { planFlights, toteReadyDate } from "../lib/flights";
+import { planFlights, rolledOverOnto, toteReadyDate } from "../lib/flights";
 import { packOrdersByBatch } from "../lib/packing";
 import { AIRCRAFT, TOTE, type Flight } from "../lib/types";
 
@@ -79,6 +79,14 @@ function run(name: string, ordersPath: string, capacities: Flight[]) {
   console.log(
     `  info: rolled over past all departures: ${plan.rolledOverToteIds.length ? plan.rolledOverToteIds.join(", ") : "none"}`,
   );
+
+  // Per-departure rollover: totes ready for an earlier flight that flew later.
+  const rolled = rolledOverOnto(plan, totes);
+  for (const [dep, ids] of rolled)
+    console.log(`  info: dep #${dep} carries ${ids.length} rolled-over totes: ${ids.join(", ")}`);
+  if (capacities.length > 1 && plan.flights.some((f, i) => i > 0 && f.loadedToteIds.length > 0)) {
+    check(rolled.size > 0, "later departures report their rolled-over totes");
+  }
 }
 
 // Stage 1: one full Caravan.
