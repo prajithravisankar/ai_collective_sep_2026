@@ -13,6 +13,8 @@ import { planRoutes, routeFor, toteCommunity } from "@/lib/routes";
 import { cuft, lb } from "@/lib/format";
 import { sampleFlightCapacities } from "@/lib/sample-data";
 import CabinMap from "@/components/CabinMap";
+import CapacitySandbox from "@/components/CapacitySandbox";
+import { flightMetrics } from "@/lib/flight-metrics";
 import { computeStacking, STACKING } from "@/lib/stacking";
 import { TOTE_LIFE_FLOW, useAppStore, type ToteLife } from "@/lib/store";
 import { useToast } from "@/lib/toast";
@@ -89,6 +91,7 @@ export default function FlightManagementPage() {
             first — flight planning uses those exact totes and weights.
           </EmptyState>
         </div>
+        <CapacitySandbox totes={store.totes} capacities={store.capacities} />
       </div>
     );
   }
@@ -428,6 +431,8 @@ export default function FlightManagementPage() {
             </button>
           </>
         )}
+
+        <CapacitySandbox totes={store.totes} capacities={store.capacities} />
 
         <details className="card mt-10 p-4 text-xs text-zinc-400">
           <summary className="cursor-pointer font-semibold text-zinc-300">
@@ -862,22 +867,13 @@ function FlightCard({
   const loaded = flight.loadedToteIds
     .map((id) => totes.find((t) => t.toteId === id))
     .filter((t): t is Tote => !!t);
-  const w = loaded.reduce((s, t) => s + t.weightLb, 0);
-  const vol = loaded.length * TOTE.nominalVolumeCuFt;
+  const { weight: w, volume: vol, margins, binding } = flightMetrics([flight], totes);
 
   // Same rounding slack the planner uses: a load it accepted must never
   // render as an overflow (no "-0.0 cu ft left", no red bar).
   const weightLeft = Math.max(0, flight.availablePayloadLb - w);
   const volLeft = Math.max(0, flight.availableVolumeCuFt - vol);
   const totesLeft = Math.max(0, flight.availableTotes - loaded.length);
-  const frac = (used: number, avail: number) =>
-    avail ? Math.min(1, used / avail) : 0;
-  const margins = [
-    ["weight", frac(w, flight.availablePayloadLb)],
-    ["space", frac(vol, flight.availableVolumeCuFt)],
-    ["totes", frac(loaded.length, flight.availableTotes)],
-  ] as const;
-  const binding = margins.reduce((a, b) => (b[1] >= a[1] ? b : a));
 
   return (
     <div className="card p-4">
