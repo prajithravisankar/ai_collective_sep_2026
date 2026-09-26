@@ -36,7 +36,13 @@ export const TOTE = {
   widthIn: 14,
   heightIn: 11,
   volumeCuIn: 23.5 * 14 * 11,
-  maxWeightLb: 50, // sane per-tote lifting limit; adjust if the brief says otherwise
+  // OUR assumption — the brief demands a per-tote weight check but gives no
+  // number. 50 lb = safe one-person lift. Operator-adjustable in the UI.
+  maxWeightLb: 50,
+  // Nominal footprint used for AIRCRAFT volume accounting: the brief's
+  // "roughly 3,600 cu in" figure. The Stage 2 capacity CSV matches this
+  // exactly (available_volume_cuft = totes x 2.0833).
+  nominalVolumeCuFt: 3600 / 1728,
 };
 
 export interface Tote {
@@ -69,6 +75,8 @@ export interface Flight {
 export const AIRCRAFT = {
   maxTotes: 90,
   payloadLb: 2877,
+  cargoVolumeCuFt: 90 * (3600 / 1728), // 187.5, matches the capacity data
+
   // Published cabin figures; confirm & cite source in the flight tab UI.
   cabinWidthIn: 64,
   cabinHeightIn: 54,

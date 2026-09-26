@@ -23,9 +23,14 @@ function makeTote(totes: Tote[]): Tote {
   return tote;
 }
 
-function fits(tote: Tote, weightLb: number, volumeCuIn: number): boolean {
+function fits(
+  tote: Tote,
+  weightLb: number,
+  volumeCuIn: number,
+  maxWeightLb: number,
+): boolean {
   return (
-    tote.weightLb + weightLb <= TOTE.maxWeightLb &&
+    tote.weightLb + weightLb <= maxWeightLb &&
     tote.volumeCuIn + volumeCuIn <= TOTE.volumeCuIn
   );
 }
@@ -42,7 +47,12 @@ function addToTote(tote: Tote, orderId: string, items: OrderItem[]) {
   tote.fillPercent = (tote.volumeCuIn / TOTE.volumeCuIn) * 100;
 }
 
-export function packOrdersIntoTotes(orders: Order[]): Tote[] {
+// maxToteWeightLb is OUR assumption (no number in the challenge materials),
+// so it is a parameter the UI can change. Default: safe one-person lift.
+export function packOrdersIntoTotes(
+  orders: Order[],
+  maxToteWeightLb: number = TOTE.maxWeightLb,
+): Tote[] {
   const totes: Tote[] = [];
   // Largest orders first: big orders claim fresh totes, small ones
   // fill the gaps left behind.
@@ -52,16 +62,17 @@ export function packOrdersIntoTotes(orders: Order[]): Tote[] {
 
   for (const order of sorted) {
     const wholeOrderFits =
-      order.totalWeightLb <= TOTE.maxWeightLb &&
+      order.totalWeightLb <= maxToteWeightLb &&
       order.totalVolumeCuIn <= TOTE.volumeCuIn;
 
     if (wholeOrderFits) {
       const tote =
-        totes.find((t) => fits(t, order.totalWeightLb, order.totalVolumeCuIn)) ??
-        makeTote(totes);
+        totes.find((t) =>
+          fits(t, order.totalWeightLb, order.totalVolumeCuIn, maxToteWeightLb),
+        ) ?? makeTote(totes);
       addToTote(tote, order.orderId, order.items);
     } else {
-      splitOrderAcrossTotes(order, totes);
+      splitOrderAcrossTotes(order, totes, maxToteWeightLb);
     }
   }
   return totes;
@@ -70,14 +81,18 @@ export function packOrdersIntoTotes(orders: Order[]): Tote[] {
 // An order that cannot fit one tote fills its own run of totes,
 // largest items first. Its last tote is left open, so later
 // (smaller) whole orders can still top it up via first-fit above.
-function splitOrderAcrossTotes(order: Order, totes: Tote[]) {
+function splitOrderAcrossTotes(
+  order: Order,
+  totes: Tote[],
+  maxToteWeightLb: number,
+) {
   const ownTotes: Tote[] = [];
   const items = [...order.items].sort((a, b) => itemVolume(b) - itemVolume(a));
 
   for (const item of items) {
     const w = item.weightLb;
     const v = itemVolume(item);
-    let target = ownTotes.find((t) => fits(t, w, v));
+    let target = ownTotes.find((t) => fits(t, w, v, maxToteWeightLb));
     if (!target) {
       target = makeTote(totes);
       ownTotes.push(target);

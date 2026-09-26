@@ -12,7 +12,7 @@ const tabs = [
 export default function Nav() {
   const pathname = usePathname();
   return (
-    <header className="border-b border-zinc-800 bg-zinc-950">
+    <header className="border-b border-zinc-800 bg-zinc-950 print:hidden">
       <div className="mx-auto flex max-w-6xl items-center gap-6 px-4">
         <Link href="/" className="py-3 font-semibold text-emerald-400">
           Zamiigo Fulfillment

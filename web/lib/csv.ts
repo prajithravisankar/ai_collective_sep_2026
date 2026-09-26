@@ -5,7 +5,7 @@
 // Judges will upload a FRESH csv, so never hard-code data.
 
 import Papa from "papaparse";
-import type { Order, OrderItem } from "./types";
+import type { Flight, Order, OrderItem } from "./types";
 
 // Same parser but from raw CSV text (used by tests and any
 // "load sample data" button).
@@ -79,4 +79,25 @@ export function groupIntoOrders(items: OrderItem[]): Order[] {
 
 function sum(nums: number[]): number {
   return nums.reduce((a, b) => a + b, 0);
+}
+
+// Flight capacity CSV (Stage 2):
+// departure_id,departure_date,available_totes,available_payload_lb,available_volume_cuft
+export function parseFlightCapacityCsvText(text: string): Flight[] {
+  const results = Papa.parse<Record<string, string>>(text, {
+    header: true,
+    skipEmptyLines: true,
+  });
+  return results.data.map((row) => ({
+    departureId: row.departure_id ?? "",
+    departureDate: row.departure_date ?? "",
+    availableTotes: Number(row.available_totes),
+    availablePayloadLb: Number(row.available_payload_lb),
+    availableVolumeCuFt: Number(row.available_volume_cuft),
+    loadedToteIds: [],
+  }));
+}
+
+export async function parseFlightCapacityCsv(file: File): Promise<Flight[]> {
+  return parseFlightCapacityCsvText(await file.text());
 }
