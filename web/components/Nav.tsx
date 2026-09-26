@@ -8,7 +8,7 @@ import { usePathname } from "next/navigation";
 
 const items = [
   {
-    href: "/",
+    href: "/overview",
     label: "Overview",
     exact: true,
     icon: (
@@ -71,7 +71,7 @@ export default function Nav() {
     <>
       {/* desktop: fixed left sidebar */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-52 flex-col border-r border-edge bg-surface md:flex print:hidden">
-        <Link href="/" className="flex items-center gap-2.5 px-4 py-4">
+        <Link href="/overview" className="flex items-center gap-2.5 px-4 py-4">
           <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-accent text-sm font-bold text-[#06110c]">
             Z
           </span>
@@ -111,7 +111,7 @@ export default function Nav() {
       {/* mobile: compact sticky top bar */}
       <header className="sticky top-0 z-40 border-b border-edge bg-surface/95 backdrop-blur md:hidden print:hidden">
         <div className="no-scrollbar flex items-center gap-1 overflow-x-auto px-3">
-          <Link href="/" className="mr-1 shrink-0 py-2.5">
+          <Link href="/overview" className="mr-1 shrink-0 py-2.5">
             <span className="grid h-6 w-6 place-items-center rounded-md bg-accent text-xs font-bold text-[#06110c]">
               Z
             </span>
