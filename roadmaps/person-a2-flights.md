@@ -5,10 +5,11 @@ Goal: put totes on departures without breaking any limit, roll the rest over.
 
 ## Milestone 1 — Capacity CSV
 
-- [ ] Add `parseFlightCapacityCsv` to `web/lib/csv.ts` (same PapaParse pattern
+- [x] Add `parseFlightCapacityCsv` to `web/lib/csv.ts` (same PapaParse pattern
       as orders). Columns: `departure_id, departure_date, available_totes,
       available_payload_lb, available_volume_cuft`
-- [ ] Map rows to the `Flight` type
+      (done by B — the upload UI needed it)
+- [x] Map rows to the `Flight` type (done by B)
 - [ ] Stage 1 has no capacity CSV: default to one full plane —
       `AIRCRAFT` in types.ts (90 totes, 2,877 lb, 187.5 cu ft)
 
@@ -18,7 +19,8 @@ Goal: put totes on departures without breaking any limit, roll the rest over.
       any limit would be broken:
   - [ ] tote count ≤ `availableTotes`
   - [ ] total weight ≤ `availablePayloadLb`
-  - [ ] total volume ≤ `availableVolumeCuFt` (careful: totes are cu IN, flights cu FT)
+  - [ ] total volume ≤ `availableVolumeCuFt` — use `TOTE.nominalVolumeCuFt`
+        (3,600 cu in basis; the capacity CSV numbers match it exactly)
 - [ ] Report per flight: weight left, space left, totes left
 - [ ] Report **which limit binds** — the one with the least room left (weight,
       volume, or tote count). The brief explicitly asks for this.
