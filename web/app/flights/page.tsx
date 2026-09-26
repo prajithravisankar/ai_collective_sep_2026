@@ -122,7 +122,7 @@ export default function FlightManagementPage() {
         {store.capacities.length > 0 && (
           <>
             <div className="mt-6 overflow-x-auto rounded-xl border border-edge">
-              <table className="w-full text-sm">
+              <table className="w-full min-w-[520px] text-sm">
                 <thead className="bg-surface text-left text-[11px] uppercase tracking-wider text-zinc-500">
                   <tr>
                     <th className="px-4 py-3 font-medium">Departure</th>
@@ -267,10 +267,10 @@ export default function FlightManagementPage() {
           </>
         )}
 
-        <div className="card mt-10 p-4 text-xs text-zinc-400">
-          <p className="font-semibold text-zinc-300">
+        <details className="card mt-10 p-4 text-xs text-zinc-400">
+          <summary className="cursor-pointer font-semibold text-zinc-300">
             Aircraft, stacking model and sources (stated per the brief)
-          </p>
+          </summary>
           <ul className="mt-2 list-disc space-y-1 pl-4">
             <li>
               {AIRCRAFT.model}. Wilderness North Air operates the Cessna 208B
@@ -321,7 +321,7 @@ export default function FlightManagementPage() {
               </span>
             ))}
           </p>
-        </div>
+        </details>
       </div>
 
       {/* ---------- print: manifest per flight ---------- */}
@@ -421,53 +421,81 @@ function ToteTracker() {
           </span>
         </div>
       </div>
-      <div className="mt-3 overflow-x-auto rounded-xl border border-edge">
-        <table className="w-full text-sm">
-          <thead className="bg-surface text-left text-[11px] uppercase tracking-wider text-zinc-500">
-            <tr>
-              <th className="px-4 py-2.5 font-medium">Tote</th>
-              <th className="px-4 py-2.5 font-medium">Flight</th>
-              <th className="px-4 py-2.5 font-medium">Status</th>
-              <th className="px-4 py-2.5 text-right font-medium">Days since</th>
-            </tr>
-          </thead>
-          <tbody>
-            {store.totes.map((t) => {
-              const life = store.toteLifecycle[t.toteId];
-              const status = life?.status ?? "packed";
-              const flight = flightOfTote.get(t.toteId);
-              return (
-                <tr key={t.toteId} className="border-t border-edge">
-                  <td className="px-4 py-2 font-mono text-xs">{t.toteId}</td>
-                  <td className="px-4 py-2 text-zinc-400">
-                    {flight ? `#${flight.departureId} · ${flight.departureDate}` : "—"}
-                  </td>
-                  <td className="px-4 py-2">
-                    <select
-                      value={status}
-                      onChange={(e) =>
-                        store.setToteStatus(t.toteId, e.target.value as ToteLife)
-                      }
-                      className="input px-2 py-1 text-xs"
+      <div className="mt-3 space-y-2">
+        {groupTotesByFlight(store.totes, flightOfTote).map(([label, group]) => {
+          const outHere = group.filter((t) =>
+            ["flown", "delivered"].includes(
+              store.toteLifecycle[t.toteId]?.status ?? "packed",
+            ),
+          ).length;
+          return (
+            <details
+              key={label}
+              className="rounded-xl border border-edge bg-surface"
+            >
+              <summary className="flex cursor-pointer flex-wrap items-center gap-2 px-4 py-2.5 text-sm">
+                <span className="font-medium">{label}</span>
+                <span className="text-xs text-zinc-500">
+                  {group.length} totes
+                  {outHere > 0 && ` · ${outHere} still out`}
+                </span>
+              </summary>
+              <ul className="border-t border-edge px-4 py-2">
+                {group.map((t) => {
+                  const life = store.toteLifecycle[t.toteId];
+                  const status = life?.status ?? "packed";
+                  return (
+                    <li
+                      key={t.toteId}
+                      className="flex items-center justify-between gap-3 py-1.5 text-sm"
                     >
-                      {TOTE_LIFE_FLOW.map((st) => (
-                        <option key={st} value={st}>
-                          {st}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="px-4 py-2 text-right tabular-nums text-zinc-400">
-                    {status === "packed" || status === "returned" ? "—" : `${days(life?.at)}d`}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                      <span className="font-mono text-xs">{t.toteId}</span>
+                      <span className="ml-auto text-xs text-zinc-500">
+                        {status === "packed" || status === "returned"
+                          ? ""
+                          : `${days(life?.at)}d out`}
+                      </span>
+                      <select
+                        value={status}
+                        onChange={(e) =>
+                          store.setToteStatus(
+                            t.toteId,
+                            e.target.value as ToteLife,
+                          )
+                        }
+                        className="input px-2 py-1 text-xs"
+                      >
+                        {TOTE_LIFE_FLOW.map((st) => (
+                          <option key={st} value={st}>
+                            {st}
+                          </option>
+                        ))}
+                      </select>
+                    </li>
+                  );
+                })}
+              </ul>
+            </details>
+          );
+        })}
       </div>
     </div>
   );
+}
+
+function groupTotesByFlight(
+  totes: Tote[],
+  flightOfTote: Map<string, Flight>,
+): [string, Tote[]][] {
+  const groups = new Map<string, Tote[]>();
+  for (const t of totes) {
+    const f = flightOfTote.get(t.toteId);
+    const label = f
+      ? `Flight #${f.departureId} · ${f.departureDate}`
+      : "Not on a flight yet";
+    groups.set(label, [...(groups.get(label) ?? []), t]);
+  }
+  return [...groups.entries()];
 }
 
 // Printable docs for the drop-off partner and the households.
@@ -617,12 +645,19 @@ function FlightCard({
   const w = loaded.reduce((s, t) => s + t.weightLb, 0);
   const vol = loaded.length * TOTE.nominalVolumeCuFt;
 
+  // Same rounding slack the planner uses: a load it accepted must never
+  // render as an overflow (no "-0.0 cu ft left", no red bar).
+  const weightLeft = Math.max(0, flight.availablePayloadLb - w);
+  const volLeft = Math.max(0, flight.availableVolumeCuFt - vol);
+  const totesLeft = Math.max(0, flight.availableTotes - loaded.length);
+  const frac = (used: number, avail: number) =>
+    avail ? Math.min(1, used / avail) : 0;
   const margins = [
-    ["weight", flight.availablePayloadLb ? w / flight.availablePayloadLb : 0],
-    ["space", flight.availableVolumeCuFt ? vol / flight.availableVolumeCuFt : 0],
-    ["totes", flight.availableTotes ? loaded.length / flight.availableTotes : 0],
+    ["weight", frac(w, flight.availablePayloadLb)],
+    ["space", frac(vol, flight.availableVolumeCuFt)],
+    ["totes", frac(loaded.length, flight.availableTotes)],
   ] as const;
-  const binding = margins.reduce((a, b) => (b[1] > a[1] ? b : a));
+  const binding = margins.reduce((a, b) => (b[1] >= a[1] ? b : a));
 
   return (
     <div className="card p-4">
@@ -637,22 +672,25 @@ function FlightCard({
       <div className="mt-3 space-y-2 text-sm">
         <Row
           label={`Weight ${lb(w)} / ${lb(flight.availablePayloadLb)}`}
-          left={`${lb(flight.availablePayloadLb - w)} left`}
+          left={`${lb(weightLeft)} left`}
           value={margins[0][1] * 100}
         />
         <Row
           label={`Space ${cuft(vol)} / ${cuft(flight.availableVolumeCuFt)}`}
-          left={`${cuft(flight.availableVolumeCuFt - vol)} left`}
+          left={`${cuft(volLeft)} left`}
           value={margins[1][1] * 100}
         />
         <Row
           label={`Totes ${loaded.length} / ${flight.availableTotes}`}
-          left={`${flight.availableTotes - loaded.length} left`}
+          left={`${totesLeft} left`}
           value={margins[2][1] * 100}
         />
       </div>
       <p className="mt-3 text-xs text-zinc-500">
-        {loaded.map((t) => t.toteId).join(", ") || "empty"}
+        {loaded
+          .map((t) => t.toteId)
+          .sort((a, b) => Number(a.slice(1)) - Number(b.slice(1)))
+          .join(", ") || "empty"}
       </p>
       {loaded.length > 0 && <StackingLine count={loaded.length} />}
       {loaded.length > 0 && hourlyCost > 0 && (
@@ -713,12 +751,11 @@ function StackingLine({ count }: { count: number }) {
   const st = computeStacking(count);
   return (
     <p className="mt-2 border-t border-zinc-800 pt-2 text-xs text-zinc-400">
-      Stacked {STACKING.totesAcross} across × {STACKING.layersHigh} high:{" "}
-      {st.rowsUsed} of {STACKING.maxRows} rows →{" "}
+      Stacked {STACKING.totesAcross} across × {STACKING.layersHigh} high in{" "}
+      {st.rowsUsed} row{st.rowsUsed === 1 ? "" : "s"} →{" "}
       <span className="text-zinc-200">
         {st.lengthLeftIn.toFixed(1)}″ of cabin length free
-      </span>{" "}
-      ({st.moreTotesFit} more totes fit by dimensions)
+      </span>
     </p>
   );
 }

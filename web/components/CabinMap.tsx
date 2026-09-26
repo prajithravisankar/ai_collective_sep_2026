@@ -59,7 +59,7 @@ export default function CabinMap({ totes }: { totes: Tote[] }) {
           ))}
         </div>
         <p className="text-xs text-zinc-500">
-          {layerCount} totes on this layer · {st.lengthLeftIn.toFixed(1)}″ of
+          {layerCount} tote{layerCount === 1 ? "" : "s"} on this layer · {st.lengthLeftIn.toFixed(1)}″ of
           cabin length free
         </p>
       </div>
@@ -98,15 +98,17 @@ export default function CabinMap({ totes }: { totes: Tote[] }) {
                 height={2 * CELL + GAP + 16}
                 fill="rgb(39 39 42 / 0.45)"
               />
-              <text
-                x={NOSE + usedW + (rowsW - usedW) / 2}
-                y={height / 2 + 4}
-                fontSize="11"
-                textAnchor="middle"
-                fill="rgb(161 161 170)"
-              >
-                {st.lengthLeftIn.toFixed(0)}″ free
-              </text>
+              {rowsW - usedW > 70 && (
+                <text
+                  x={NOSE + usedW + (rowsW - usedW) / 2}
+                  y={height / 2 + 4}
+                  fontSize="11"
+                  textAnchor="middle"
+                  fill="rgb(161 161 170)"
+                >
+                  {st.lengthLeftIn.toFixed(0)}″ free
+                </text>
+              )}
             </>
           )}
 
@@ -117,6 +119,9 @@ export default function CabinMap({ totes }: { totes: Tote[] }) {
               const x = NOSE + row * (CELL + GAP);
               const y = PAD_Y + side * (CELL + GAP);
               if (!tote) {
+                // Only sketch empty slots inside the loaded region; the
+                // free tail of the cabin stays clean.
+                if (row >= st.rowsUsed) return null;
                 return (
                   <rect
                     key={`${row}-${side}`}
@@ -177,13 +182,13 @@ export default function CabinMap({ totes }: { totes: Tote[] }) {
             strokeWidth="3"
           />
           <text
-            x={NOSE + rowsW - 1.4 * CELL}
+            x={NOSE + rowsW - 0.6 * CELL}
             y={height - 8}
             fontSize="9"
-            textAnchor="middle"
+            textAnchor="end"
             fill="rgb(245 158 11)"
           >
-            cargo door 50″×49″
+            cargo door 50″ × 49″
           </text>
 
           {Array.from({ length: STACKING.maxRows }).map((_, r) => (
