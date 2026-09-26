@@ -17,12 +17,14 @@ npm install
 npm run dev   # open http://localhost:3000
 ```
 
-## Where to build (see idea.md for full task lists)
+## Where to build — your roadmap has your todo list
 
-- Person A1 (packing logic): `web/lib/packing.ts` (stub with TODOs)
-- Person A2 (flight logic): `web/lib/flights.ts` (stub with TODOs)
-- Person B (UI): `web/app/entry/`, `web/app/picking/`, `web/app/flights/` pages
-- Person C (3D view): starts after the MVP is deployed
+- Person A1 (packing logic): [roadmaps/person-a1-packing.md](roadmaps/person-a1-packing.md) → `web/lib/packing.ts`
+- Person A2 (flight logic): [roadmaps/person-a2-flights.md](roadmaps/person-a2-flights.md) → `web/lib/flights.ts`
+- Person B (UI): [roadmaps/person-b-ui.md](roadmaps/person-b-ui.md) → `web/app/` pages
+- Person C (3D view, after MVP is deployed): [roadmaps/person-c-3d.md](roadmaps/person-c-3d.md)
+
+Check off boxes in your roadmap as you go and push, so everyone sees progress.
 
 Shared types are in `web/lib/types.ts`. CSV parsing already works: `web/lib/csv.ts`.
 
