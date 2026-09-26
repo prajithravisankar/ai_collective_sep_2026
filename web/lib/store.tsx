@@ -14,6 +14,7 @@ import {
   type ReactNode,
 } from "react";
 import { groupIntoOrders } from "./csv";
+import type { LoadPlan } from "./flights";
 import {
   assignTotesToCarts,
   packOrdersByBatch,
@@ -38,6 +39,16 @@ export const STATUS_FLOW: OrderStatus[] = [
   "picked",
 ];
 
+// Returnable-tote lifecycle: the brief says a local partner "brings the
+// totes back", so totes are tracked assets, not packaging.
+export type ToteLife = "packed" | "flown" | "delivered" | "returned";
+export const TOTE_LIFE_FLOW: ToteLife[] = [
+  "packed",
+  "flown",
+  "delivered",
+  "returned",
+];
+
 interface Persisted {
   items: OrderItem[];
   statuses: Record<string, OrderStatus>;
@@ -46,6 +57,11 @@ interface Persisted {
   totesPerCart: number;
   maxToteWeightLb: number;
   capacities: Flight[];
+  plan: LoadPlan | null; // shared so slips/tracker/dashboard can use it
+  // orderId::productName -> what the store gave instead
+  substitutions: Record<string, string>;
+  toteLifecycle: Record<string, { status: ToteLife; at: number }>;
+  hourlyCostCad: number; // Caravan charter estimate, operator-adjustable
 }
 
 const EMPTY: Persisted = {
@@ -56,7 +72,14 @@ const EMPTY: Persisted = {
   totesPerCart: 5,
   maxToteWeightLb: TOTE.maxWeightLb,
   capacities: [],
+  plan: null,
+  substitutions: {},
+  toteLifecycle: {},
+  hourlyCostCad: 1500,
 };
+
+export const subKey = (orderId: string, productName: string) =>
+  `${orderId}::${productName}`;
 
 interface StoreValue extends Persisted {
   orders: Order[]; // derived from items + statuses
@@ -69,6 +92,12 @@ interface StoreValue extends Persisted {
   setTotesPerCart: (n: number) => void;
   setMaxToteWeightLb: (n: number) => void;
   setCapacities: (flights: Flight[]) => void;
+  updateCapacity: (departureId: string, patch: Partial<Flight>) => void;
+  setPlan: (plan: LoadPlan | null) => void;
+  setSubstitution: (orderId: string, productName: string, note: string) => void;
+  setToteStatus: (toteId: string, status: ToteLife) => void;
+  markFlightTotes: (toteIds: string[], status: ToteLife) => void;
+  setHourlyCost: (n: number) => void;
   resetAll: () => void;
 }
 
@@ -126,6 +155,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       statuses: {},
       totes: [], // new batch invalidates old packing
       baselineToteCount: null,
+      plan: null,
+      substitutions: {},
+      toteLifecycle: {},
     }));
   }, []);
 
@@ -160,6 +192,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         ...s,
         baselineToteCount,
         totes: packOrdersByBatch(grouped, s.maxToteWeightLb),
+        plan: null, // repacking changes tote ids
+        toteLifecycle: {},
       };
     });
   }, []);
@@ -255,7 +289,65 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setCapacities = useCallback((flights: Flight[]) => {
-    setState((s) => ({ ...s, capacities: flights }));
+    setState((s) => ({ ...s, capacities: flights, plan: null }));
+  }, []);
+
+  // What-if: the brief says departures sometimes leave with "only part of
+  // the hold available" — edit a departure and re-plan instantly.
+  const updateCapacity = useCallback(
+    (departureId: string, patch: Partial<Flight>) => {
+      setState((s) => ({
+        ...s,
+        plan: null, // numbers changed; plan is stale
+        capacities: s.capacities.map((f) =>
+          f.departureId === departureId ? { ...f, ...patch } : f,
+        ),
+      }));
+    },
+    [],
+  );
+
+  const setPlan = useCallback((plan: LoadPlan | null) => {
+    setState((s) => ({ ...s, plan }));
+  }, []);
+
+  const setSubstitution = useCallback(
+    (orderId: string, productName: string, note: string) => {
+      setState((s) => {
+        const substitutions = { ...s.substitutions };
+        const key = subKey(orderId, productName);
+        if (note.trim()) substitutions[key] = note.trim();
+        else delete substitutions[key];
+        return { ...s, substitutions };
+      });
+    },
+    [],
+  );
+
+  const setToteStatus = useCallback((toteId: string, status: ToteLife) => {
+    setState((s) => ({
+      ...s,
+      toteLifecycle: {
+        ...s.toteLifecycle,
+        [toteId]: { status, at: Date.now() },
+      },
+    }));
+  }, []);
+
+  const markFlightTotes = useCallback(
+    (toteIds: string[], status: ToteLife) => {
+      setState((s) => {
+        const toteLifecycle = { ...s.toteLifecycle };
+        const at = Date.now();
+        for (const id of toteIds) toteLifecycle[id] = { status, at };
+        return { ...s, toteLifecycle };
+      });
+    },
+    [],
+  );
+
+  const setHourlyCost = useCallback((n: number) => {
+    setState((s) => ({ ...s, hourlyCostCad: Math.max(0, n || 0) }));
   }, []);
 
   const resetAll = useCallback(() => {
@@ -274,6 +366,12 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     setTotesPerCart,
     setMaxToteWeightLb,
     setCapacities,
+    updateCapacity,
+    setPlan,
+    setSubstitution,
+    setToteStatus,
+    markFlightTotes,
+    setHourlyCost,
     resetAll,
   };
 

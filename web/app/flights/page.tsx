@@ -8,7 +8,7 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 import { EmptyState, FillBar } from "@/components/ui";
 import { parseFlightCapacityCsv } from "@/lib/csv";
-import { planFlights, type LoadPlan } from "@/lib/flights";
+import { planFlights } from "@/lib/flights";
 import { cuft, lb } from "@/lib/format";
 import { sampleFlightCapacities } from "@/lib/sample-data";
 import CabinMap from "@/components/CabinMap";
@@ -19,24 +19,22 @@ import { AIRCRAFT, TOTE, type Flight, type Tote } from "@/lib/types";
 export default function FlightManagementPage() {
   const store = useAppStore();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [plan, setPlan] = useState<LoadPlan | null>(null);
+  const plan = store.plan;
   const [planError, setPlanError] = useState<string | null>(null);
 
   function runPlan(capacities: Flight[]) {
     try {
-      setPlan(planFlights(store.totes, capacities));
+      store.setPlan(planFlights(store.totes, capacities));
       setPlanError(null);
     } catch (e) {
-      setPlan(null);
+      store.setPlan(null);
       setPlanError(e instanceof Error ? e.message : String(e));
     }
   }
 
   async function onCapacityFile(file: File | undefined) {
     if (!file) return;
-    const flights = await parseFlightCapacityCsv(file);
-    store.setCapacities(flights);
-    setPlan(null);
+    store.setCapacities(await parseFlightCapacityCsv(file));
   }
 
   if (store.totes.length === 0) {
@@ -94,7 +92,6 @@ export default function FlightManagementPage() {
             <button
               onClick={() => {
                 store.setCapacities([fullCaravan()]);
-                setPlan(null);
               }}
               className="btn btn-secondary"
             >
@@ -103,7 +100,6 @@ export default function FlightManagementPage() {
             <button
               onClick={() => {
                 store.setCapacities(sampleFlightCapacities());
-                setPlan(null);
               }}
               className="btn btn-secondary"
             >
@@ -131,22 +127,51 @@ export default function FlightManagementPage() {
                       <td className="px-4 py-3">#{f.departureId}</td>
                       <td className="px-4 py-3">{f.departureDate}</td>
                       <td className="px-4 py-3 text-right tabular-nums">
-                        {f.availableTotes}
+                        <CapInput
+                          value={f.availableTotes}
+                          onChange={(n) =>
+                            store.updateCapacity(f.departureId, {
+                              availableTotes: n,
+                            })
+                          }
+                        />
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums">
-                        {lb(f.availablePayloadLb)}
+                        <CapInput
+                          value={f.availablePayloadLb}
+                          onChange={(n) =>
+                            store.updateCapacity(f.departureId, {
+                              availablePayloadLb: n,
+                            })
+                          }
+                        />{" "}
+                        lb
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums">
-                        {cuft(f.availableVolumeCuFt)}
+                        <CapInput
+                          value={f.availableVolumeCuFt}
+                          step={0.1}
+                          onChange={(n) =>
+                            store.updateCapacity(f.departureId, {
+                              availableVolumeCuFt: n,
+                            })
+                          }
+                        />{" "}
+                        cu ft
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+            <p className="mt-2 text-xs text-zinc-500">
+              What-if: hold space changes at the last minute — edit any
+              number above and re-plan to see what rolls over.
+              {store.capacities.length > 0 && !plan && " Plan is stale — hit Plan flights."}
+            </p>
             <button
               onClick={() => runPlan(store.capacities)}
-              className="btn btn-primary mt-4"
+              className="btn btn-primary mt-3"
             >
               Plan flights
             </button>
@@ -418,5 +443,26 @@ function Row({
         <FillBar value={value} />
       </div>
     </div>
+  );
+}
+
+function CapInput({
+  value,
+  onChange,
+  step = 1,
+}: {
+  value: number;
+  onChange: (n: number) => void;
+  step?: number;
+}) {
+  return (
+    <input
+      type="number"
+      min={0}
+      step={step}
+      value={value}
+      onChange={(e) => onChange(Number(e.target.value) || 0)}
+      className="input w-20 px-2 py-1 text-right text-xs tabular-nums"
+    />
   );
 }
