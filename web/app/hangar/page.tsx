@@ -28,6 +28,7 @@ export default function HangarPage() {
   const [flightId, setFlightId] = useState<string | null>(null);
   const [focus, setFocus] = useState<FocusState>({ toteId: null, highlight: new Set() });
   const [focusLabel, setFocusLabel] = useState("");
+  const [colorByWeight, setColorByWeight] = useState(false);
 
   const flights = store.plan?.flights.filter((f) => f.loadedToteIds.length > 0) ?? [];
   const viewTotes = useMemo(() => {
@@ -117,6 +118,13 @@ export default function HangarPage() {
               {f.destination ? `${f.departureDate} · ${f.destination}` : `#${f.departureId} · ${f.departureDate}`}
             </button>
           ))}
+          <button
+            onClick={() => setColorByWeight((v) => !v)}
+            className={`chip ${colorByWeight ? "chip-active" : ""}`}
+            title="Color totes light to dark by weight"
+          >
+            ⚖ weight heatmap
+          </button>
           {(focus.toteId || focus.highlight.size > 0) && (
             <button
               onClick={() => {
@@ -135,11 +143,40 @@ export default function HangarPage() {
         <Hangar3D
           totes={viewTotes}
           focus={focus}
+          colorByWeight={colorByWeight}
           onPick={(id) => {
             setFocus({ toteId: id, highlight: new Set() });
             setFocusLabel("");
           }}
         />
+
+        {/* live HUD: what's on this plane right now */}
+        <div className="pointer-events-none absolute left-3 top-3 rounded-xl border border-edge bg-[#0b0f0e]/90 px-3.5 py-2.5 backdrop-blur">
+          <p className="text-[10px] uppercase tracking-wider text-zinc-500">
+            {flightId
+              ? `Departure ${flightId}`
+              : "Whole batch"}
+          </p>
+          <p className="mt-0.5 text-sm font-semibold text-zinc-100 tabular-nums">
+            {viewTotes.length} totes · {lb(viewTotes.reduce((s, t) => s + t.weightLb, 0))}
+          </p>
+          <p className="text-[11px] text-zinc-400 tabular-nums">
+            avg fill{" "}
+            {viewTotes.length
+              ? Math.round(viewTotes.reduce((s, t) => s + t.fillPercent, 0) / viewTotes.length)
+              : 0}
+            % · {new Set(viewTotes.flatMap((t) => t.contents.map((c) => c.orderId))).size} orders
+          </p>
+          {colorByWeight && (
+            <div className="mt-1.5 flex items-center gap-1">
+              <span className="text-[9px] text-zinc-500">light</span>
+              {["#a7f3d0", "#6ee7b7", "#34d399", "#10b981", "#059669", "#065f46"].map((c) => (
+                <span key={c} className="h-2 w-4 rounded-[2px]" style={{ background: c }} />
+              ))}
+              <span className="text-[9px] text-zinc-500">heavy</span>
+            </div>
+          )}
+        </div>
 
         {/* focus detail overlay */}
         {focused && (
