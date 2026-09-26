@@ -5,7 +5,7 @@
 // Judges will upload a FRESH csv, so never hard-code data.
 
 import Papa from "papaparse";
-import type { Flight, Order, OrderItem } from "./types";
+import { AIRCRAFT, TOTE, type Flight, type Order, type OrderItem } from "./types";
 
 // The brief warns: "Exact column names will be confirmed in the dataset
 // provided at the start of the event." So headers are normalized
@@ -156,14 +156,21 @@ function sum(nums: number[]): number {
 // departure_id,departure_date,available_totes,available_payload_lb,available_volume_cuft
 export function parseFlightCapacityCsvText(text: string): Flight[] {
   const results = Papa.parse<Record<string, string>>(text, PARSE_OPTIONS);
-  return results.data.map((row) => ({
-    departureId: row.departure_id ?? "",
-    departureDate: row.departure_date ?? "",
-    availableTotes: num(row.available_totes),
-    availablePayloadLb: num(row.available_payload_lb),
-    availableVolumeCuFt: num(row.available_volume_cuft),
-    loadedToteIds: [],
-  }));
+  // A judge's fresh capacity file may omit a column. A missing limit is
+  // "not limiting", not zero — zero would block every tote — so fall
+  // back to the full aircraft for that dimension.
+  return results.data.map((row, i) => {
+    const totes = num(row.available_totes) || AIRCRAFT.maxTotes;
+    return {
+      departureId: row.departure_id || String(i + 1),
+      departureDate: row.departure_date ?? "",
+      availableTotes: totes,
+      availablePayloadLb: num(row.available_payload_lb) || AIRCRAFT.payloadLb,
+      availableVolumeCuFt:
+        num(row.available_volume_cuft) || totes * TOTE.nominalVolumeCuFt,
+      loadedToteIds: [],
+    };
+  });
 }
 
 export async function parseFlightCapacityCsv(file: File): Promise<Flight[]> {
