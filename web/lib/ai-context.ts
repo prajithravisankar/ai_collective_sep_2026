@@ -56,6 +56,8 @@ export function buildAIContext(pathname: string, state: AppState, question = "")
   const common = {
     page,
     pathname,
+    about:
+      "Zamiigo (Wilderness North) flies groceries from Nakina, Ontario into remote fly-in First Nation communities — Webequie, Summer Beaver and Neskantaga — on a Cessna 208B Caravan. Households order in the Zamiigo app; staff re-enter orders at the retailer, pack households into shared returnable totes, and load flights against per-route payload limits. This dashboard runs that whole chain: entry, packing, pick lists, flight planning, manifests, delivery tracking. Aircraft payload is the scarcest resource; the Nutrition North subsidy applies per household, so orders stay separate end to end.",
     dataAvailable: state.orders.length > 0,
     summary: {
       orderCount: state.orders.length,
