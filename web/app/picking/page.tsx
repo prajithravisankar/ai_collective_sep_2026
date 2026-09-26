@@ -83,12 +83,20 @@ export default function OrderPickingPage() {
               {store.totes.length ? "Re-pack all totes" : "Pack into totes"}
             </button>
             {store.totes.length > 0 && (
-              <button
-                onClick={() => window.print()}
-                className="rounded border border-zinc-600 px-4 py-2 text-sm hover:border-zinc-400"
-              >
-                Print pick lists
-              </button>
+              <>
+                <button
+                  onClick={() => window.print()}
+                  className="rounded border border-zinc-600 px-4 py-2 text-sm hover:border-zinc-400"
+                >
+                  Print pick lists
+                </button>
+                <Link
+                  href="/picking/handheld"
+                  className="rounded border border-zinc-600 px-4 py-2 text-sm hover:border-zinc-400"
+                >
+                  Handheld view
+                </Link>
+              </>
             )}
           </div>
         </div>
