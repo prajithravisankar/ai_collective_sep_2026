@@ -32,8 +32,8 @@ that carries orders from entry → totes → plane, and it **must be deployed on
 
 4. **The showpiece: 3D view (Three.js)** — Spin-around 3D of the Caravan cabin with
    totes stacked inside, and a tote view showing how items fill it. This is our
-   "wow" for judges and it also answers a hard requirement: *show your stacking
-   assumptions and leftover cabin space*.
+   "wow" for judges and it also answers a hard requirement: _show your stacking
+   assumptions and leftover cabin space_.
 
 ## The math (already checked against the real data)
 
@@ -73,3 +73,7 @@ in the "it works on my laptop" trap.
 - Scan-as-you-pick handheld view (big buttons, check off items).
 - Cost-per-order per flight.
 - Export manifest/pick list as PDF/print view.
+
+## ideas:
+
+- if time permits phone app that uses gemini api credits and updates the shared database.
