@@ -14,7 +14,7 @@ import {
   type ReactNode,
 } from "react";
 import { groupIntoOrders } from "./csv";
-import { assignTotesToCarts, packOrdersIntoTotes } from "./packing";
+import { assignTotesToCarts, packOrdersByBatch } from "./packing";
 import type {
   Cart,
   Flight,
@@ -144,7 +144,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         ...o,
         status: s.statuses[o.orderId] ?? ("entered" as OrderStatus),
       }));
-      return { ...s, totes: packOrdersIntoTotes(grouped, s.maxToteWeightLb) };
+      return { ...s, totes: packOrdersByBatch(grouped, s.maxToteWeightLb) };
     });
   }, []);
 

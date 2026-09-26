@@ -139,7 +139,8 @@ export function assignTotesToCarts(
 }
 
 // Connected components: totes sharing any orderId belong together.
-function groupLinkedTotes(totes: Tote[]): Tote[][] {
+// Also used by flight planning: linked totes fly together.
+export function groupLinkedTotes(totes: Tote[]): Tote[][] {
   const parent = totes.map((_, i) => i);
   const find = (i: number): number =>
     parent[i] === i ? i : (parent[i] = find(parent[i]));
@@ -163,4 +164,29 @@ function groupLinkedTotes(totes: Tote[]): Tote[][] {
   });
   // Keep picking order stable: groups sorted by their first tote.
   return [...groups.values()];
+}
+
+// Pack each release batch separately — the brief: orders arrive in batches
+// and Wilderness North releases one load per batch. Totes never mix
+// batches, so every tote has one clean ready-to-fly date for the planner.
+export function packOrdersByBatch(
+  orders: Order[],
+  maxToteWeightLb: number = TOTE.maxWeightLb,
+): Tote[] {
+  const byBatch = new Map<string, Order[]>();
+  for (const o of orders) {
+    const key = o.batchId || o.orderDate;
+    byBatch.set(key, [...(byBatch.get(key) ?? []), o]);
+  }
+  const batches = [...byBatch.values()].sort((a, b) =>
+    a[0].orderDate.localeCompare(b[0].orderDate),
+  );
+  const all: Tote[] = [];
+  for (const batch of batches) {
+    for (const tote of packOrdersIntoTotes(batch, maxToteWeightLb)) {
+      tote.toteId = `T${all.length + 1}`; // renumber across batches
+      all.push(tote);
+    }
+  }
+  return all;
 }

@@ -1,25 +1,84 @@
-// Flight load planning — TO BUILD (Person A2).
+// Flight load planning — Person A2.
 //
-// Stage 1: one flight, everything fits. Report weight + space left.
-// Stage 2: several departures with limited capacity
-// (flight_capacity CSV: departure_id,departure_date,available_totes,
-// available_payload_lb,available_volume_cuft).
-// Choose which orders fly on which departure; the rest roll over.
-// Only orders placed BEFORE a departure date can be on it.
-// For each flight report: totes on board, weight left, space left,
-// and which limit binds (weight vs volume vs tote count).
+// Fill departures in date order without exceeding tote count, payload or
+// volume. Rules:
+// - A tote can only fly on a departure ON/AFTER the date of every order
+//   inside it (its "ready date").
+// - Totes linked by a shared (split) order fly together on one flight.
+// - Greedy: eligible groups sorted oldest-first, then smallest-first, so
+//   early customers aren't skipped and each flight carries the most
+//   orders it can. Whatever doesn't fit rolls to the next departure.
 
+import { groupLinkedTotes } from "./packing";
 import type { Flight, Tote } from "./types";
+import { TOTE } from "./types";
+
+// The capacity CSV rounds volume to 2 decimals (22 totes -> "45.83" cu ft
+// though 22 x 2.0833 = 45.833), so allow a hair of slack when comparing.
+const VOLUME_SLACK_CUFT = 0.05;
 
 export interface LoadPlan {
-  flights: Flight[];
+  flights: Flight[]; // sorted by departure date, loadedToteIds filled
   rolledOverToteIds: string[]; // totes that missed every given departure
 }
 
+// The earliest date a tote may fly: the latest order date inside it.
+export function toteReadyDate(tote: Tote): string {
+  let ready = "";
+  for (const c of tote.contents)
+    for (const i of c.items) if (i.orderDate > ready) ready = i.orderDate;
+  return ready;
+}
+
 export function planFlights(totes: Tote[], flights: Flight[]): LoadPlan {
-  // TODO(Person A2): fill departures in date order without exceeding
-  // available totes, payload or volume; report leftovers per flight.
-  void totes;
-  void flights;
-  throw new Error("planFlights not implemented yet");
+  const groups = groupLinkedTotes(totes).map((g) => ({
+    totes: g,
+    readyDate: g.reduce(
+      (d, t) => (toteReadyDate(t) > d ? toteReadyDate(t) : d),
+      "",
+    ),
+    weightLb: g.reduce((s, t) => s + t.weightLb, 0),
+    assigned: false,
+  }));
+
+  const planned = [...flights]
+    .sort((a, b) => a.departureDate.localeCompare(b.departureDate))
+    .map((f) => ({ ...f, loadedToteIds: [] as string[] }));
+
+  for (const flight of planned) {
+    let totesLeft = flight.availableTotes;
+    let weightLeft = flight.availablePayloadLb;
+    let volumeLeft = flight.availableVolumeCuFt + VOLUME_SLACK_CUFT;
+
+    const eligible = groups
+      .filter((g) => !g.assigned && g.readyDate <= flight.departureDate)
+      .sort(
+        (a, b) =>
+          a.readyDate.localeCompare(b.readyDate) ||
+          a.totes.length - b.totes.length ||
+          a.weightLb - b.weightLb,
+      );
+
+    for (const g of eligible) {
+      const vol = g.totes.length * TOTE.nominalVolumeCuFt;
+      if (
+        g.totes.length <= totesLeft &&
+        g.weightLb <= weightLeft &&
+        vol <= volumeLeft
+      ) {
+        flight.loadedToteIds.push(...g.totes.map((t) => t.toteId));
+        totesLeft -= g.totes.length;
+        weightLeft -= g.weightLb;
+        volumeLeft -= vol;
+        g.assigned = true;
+      }
+    }
+  }
+
+  return {
+    flights: planned,
+    rolledOverToteIds: groups
+      .filter((g) => !g.assigned)
+      .flatMap((g) => g.totes.map((t) => t.toteId)),
+  };
 }
