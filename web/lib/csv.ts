@@ -7,6 +7,16 @@
 import Papa from "papaparse";
 import type { Order, OrderItem } from "./types";
 
+// Same parser but from raw CSV text (used by tests and any
+// "load sample data" button).
+export function parseOrdersCsvText(text: string): OrderItem[] {
+  const results = Papa.parse<Record<string, string>>(text, {
+    header: true,
+    skipEmptyLines: true,
+  });
+  return results.data.map(rowToItem);
+}
+
 export function parseOrdersCsv(file: File): Promise<OrderItem[]> {
   return new Promise((resolve, reject) => {
     Papa.parse<Record<string, string>>(file, {
