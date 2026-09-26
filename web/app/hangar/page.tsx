@@ -150,6 +150,13 @@ export default function HangarPage() {
           }}
         />
 
+        {viewTotes.length > 88 && (
+          <p className="pointer-events-none absolute bottom-3 left-3 rounded-lg border border-amber-800/60 bg-amber-950/80 px-3 py-1.5 text-xs text-amber-300 backdrop-blur">
+            Showing the first 88 of {viewTotes.length} totes — the cabin holds 88
+            by dimensions; plan flights to split the load.
+          </p>
+        )}
+
         {/* live HUD: what's on this plane right now */}
         <div className="pointer-events-none absolute left-3 top-3 rounded-xl border border-edge bg-[#0b0f0e]/90 px-3.5 py-2.5 backdrop-blur">
           <p className="text-[10px] uppercase tracking-wider text-zinc-500">
