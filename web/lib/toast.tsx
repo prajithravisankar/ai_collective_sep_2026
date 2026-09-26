@@ -70,7 +70,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       <div
         aria-live="polite"
-        className="pointer-events-none fixed bottom-4 right-4 z-[70] flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-2 print:hidden"
+        className="pointer-events-none fixed bottom-4 left-4 z-[70] flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-2 print:hidden"
       >
         {toasts.map((t) => (
           <button

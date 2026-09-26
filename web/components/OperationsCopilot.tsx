@@ -19,6 +19,9 @@ export default function OperationsCopilot() {
   const [error, setError] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
 
+  // The landing page is a static pitch — no operational data to ground on.
+  const onLanding = pathname === "/";
+
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [messages, loading, open]);
 
   async function ask(value: string) {
@@ -45,6 +48,8 @@ export default function OperationsCopilot() {
       setLoading(false);
     }
   }
+
+  if (onLanding) return null;
 
   return (
     <div className="fixed bottom-4 right-4 z-50 print:hidden sm:bottom-6 sm:right-6">
