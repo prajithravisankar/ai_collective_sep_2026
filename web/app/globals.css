@@ -335,3 +335,15 @@ body {
     animation: none;
   }
 }
+
+/* --- route map flight-path flow --- */
+@keyframes route-flow {
+  to { stroke-dashoffset: -14; }
+}
+.route-flow {
+  stroke-dasharray: 8 6;
+  animation: route-flow 0.9s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .route-flow { animation: none; }
+}

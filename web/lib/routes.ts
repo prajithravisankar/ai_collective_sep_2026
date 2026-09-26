@@ -68,14 +68,14 @@ export function routeFor(community: string): Route {
 }
 
 // Airport coordinates (public data; validated against the brief, above).
-const COORDS: Record<string, [number, number]> = {
+export const COORDS: Record<string, [number, number]> = {
   Nakina: [50.18, -86.7],
   Webequie: [52.96, -87.37],
   "Summer Beaver": [52.71, -88.54],
   Neskantaga: [52.2, -87.93],
 };
 
-function greatCircleNm(a: [number, number], b: [number, number]): number {
+export function greatCircleNm(a: [number, number], b: [number, number]): number {
   const rad = Math.PI / 180;
   const dLat = (b[0] - a[0]) * rad;
   const dLon = (b[1] - a[1]) * rad;

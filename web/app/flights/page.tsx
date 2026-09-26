@@ -13,6 +13,7 @@ import { planRoutes, routeFor, toteCommunity } from "@/lib/routes";
 import { cuft, lb } from "@/lib/format";
 import { sampleFlightCapacities } from "@/lib/sample-data";
 import CabinMap from "@/components/CabinMap";
+import RouteMap from "@/components/RouteMap";
 import { computeStacking, STACKING } from "@/lib/stacking";
 import { TOTE_LIFE_FLOW, useAppStore, type ToteLife } from "@/lib/store";
 import { useToast } from "@/lib/toast";
@@ -239,6 +240,14 @@ export default function FlightManagementPage() {
                   last, nearest the cargo door.
                 </p>
               </div>
+            )}
+
+            {routePreview && (
+              <RouteMap
+                flights={routePreview.flights}
+                totes={store.totes}
+                savedHours={routePreview.savedHours}
+              />
             )}
 
             <button
