@@ -71,14 +71,33 @@ export interface Flight {
   loadedToteIds: string[];
 }
 
-// Cessna 208 Caravan reference numbers (Nakina -> Webequie).
+// Cessna 208B reference numbers (Nakina -> Webequie).
+// Model: Wilderness North Air operates the Cessna 208B — TSB aviation
+// investigation A23O0028 (occurrence aircraft C-GMVB, based in Nakina).
+// Cabin: DHL Aviation C208B freighter dimension sheet — 178 x 62 x 51 in,
+// 341 cu ft, cargo door 50 x 49 in, optional belly pannier 83 cu ft.
+// Payload: the challenge brief's Nakina->Webequie fuel math (2,877 lb).
 export const AIRCRAFT = {
-  maxTotes: 90,
+  model: "Cessna 208B (freight configuration, no belly pannier)",
+  maxTotes: 90, // operator's estimate per the brief; our stacking model says 88
   payloadLb: 2877,
   cargoVolumeCuFt: 90 * (3600 / 1728), // 187.5, matches the capacity data
-
-  // Published cabin figures; confirm & cite source in the flight tab UI.
-  cabinWidthIn: 64,
-  cabinHeightIn: 54,
-  cabinLengthIn: 150, // 12.5 ft (208); 208B is ~4 ft longer
+  cabinWidthIn: 62,
+  cabinHeightIn: 51,
+  cabinLengthIn: 178,
+  cargoDoorIn: [50, 49] as const,
+  sources: [
+    {
+      label: "TSB investigation A23O0028 (Wilderness North Air, C208B C-GMVB, Nakina)",
+      url: "https://www.tsb.gc.ca/eng/rapports-reports/aviation/2023/a23o0028/a23o0028.html",
+    },
+    {
+      label: "DHL Aviation Cessna 208B dimension sheet (cabin 178x62x51 in, door 50x49 in)",
+      url: "https://aviationcargo.dhl.com/sites/default/files/aircraft_dimension_sheets/cessna-caravan-c208B.pdf",
+    },
+    {
+      label: "Challenge brief (payload 2,877 lb Nakina->Webequie, 90-tote estimate)",
+      url: "",
+    },
+  ],
 };

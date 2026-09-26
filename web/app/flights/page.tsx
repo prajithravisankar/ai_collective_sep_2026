@@ -11,6 +11,7 @@ import { parseFlightCapacityCsv } from "@/lib/csv";
 import { planFlights, type LoadPlan } from "@/lib/flights";
 import { cuft, lb, pct } from "@/lib/format";
 import { sampleFlightCapacities } from "@/lib/sample-data";
+import { computeStacking, STACKING } from "@/lib/stacking";
 import { useAppStore } from "@/lib/store";
 import { AIRCRAFT, TOTE, type Flight, type Tote } from "@/lib/types";
 
@@ -204,26 +205,58 @@ export default function FlightManagementPage() {
 
         <div className="mt-10 rounded-lg border border-zinc-800 bg-zinc-950 p-4 text-xs text-zinc-400">
           <p className="font-semibold text-zinc-300">
-            Aircraft assumptions (stated per the brief)
+            Aircraft, stacking model and sources (stated per the brief)
           </p>
           <ul className="mt-2 list-disc space-y-1 pl-4">
             <li>
-              Cessna 208 Caravan, freight configuration, no passengers. Cabin
-              ≈ {AIRCRAFT.cabinWidthIn}″ W × {AIRCRAFT.cabinHeightIn}″ H ×{" "}
-              {AIRCRAFT.cabinLengthIn}″ L (published Caravan family figures via
-              the challenge brief; exact model to be confirmed with Wilderness
-              North).
+              {AIRCRAFT.model}. Wilderness North Air operates the Cessna 208B
+              (TSB aviation investigation A23O0028: occurrence aircraft
+              C-GMVB, based in Nakina).
             </li>
             <li>
-              Max {AIRCRAFT.maxTotes} stacked totes; payload to Webequie{" "}
-              {lb(AIRCRAFT.payloadLb)} (brief: 169 nm leg, fuel deducted).
+              Freighter cabin {AIRCRAFT.cabinLengthIn}″ L ×{" "}
+              {AIRCRAFT.cabinWidthIn}″ W × {AIRCRAFT.cabinHeightIn}″ H (341 cu
+              ft), main cargo door {AIRCRAFT.cargoDoorIn[0]}″ ×{" "}
+              {AIRCRAFT.cargoDoorIn[1]}″ — DHL Aviation C208B dimension
+              sheet. Optional 83 cu ft belly pannier not counted.
             </li>
             <li>
-              Volume accounting uses the brief’s nominal tote footprint of
-              3,600 cu in ({TOTE.nominalVolumeCuFt.toFixed(2)} cu ft) — the
-              Stage 2 capacity data matches this exactly.
+              Stacking model: totes ({TOTE.lengthIn}×{TOTE.widthIn}×
+              {TOTE.heightIn}″, rim 25×15.5″) load {STACKING.totesAcross}{" "}
+              long-side across the {AIRCRAFT.cabinWidthIn}″ width (50″ used),
+              stack {STACKING.layersHigh} high (44 of{" "}
+              {AIRCRAFT.cabinHeightIn}″), in {STACKING.maxRows} rows of 15.5″
+              along the cabin → {STACKING.maxTotesByDimensions} totes by
+              dimensions, consistent with the operator’s 90-tote estimate in
+              the brief.
+            </li>
+            <li>
+              Payload to Webequie {lb(AIRCRAFT.payloadLb)} (brief: 169 nm leg,
+              fuel deducted). Volume accounting uses the brief’s nominal tote
+              footprint of 3,600 cu in ({TOTE.nominalVolumeCuFt.toFixed(2)} cu
+              ft) — the Stage 2 capacity data matches it exactly.
             </li>
           </ul>
+          <p className="mt-2">
+            Sources:{" "}
+            {AIRCRAFT.sources.map((src, i) => (
+              <span key={src.label}>
+                {i > 0 && " · "}
+                {src.url ? (
+                  <a
+                    href={src.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-emerald-400 underline"
+                  >
+                    {src.label}
+                  </a>
+                ) : (
+                  src.label
+                )}
+              </span>
+            ))}
+          </p>
         </div>
       </div>
 
@@ -245,7 +278,10 @@ export default function FlightManagementPage() {
                   Nakina (CYQN) → Webequie (CYWP) · {loaded.length} totes ·{" "}
                   {lb(w)} of {lb(f.availablePayloadLb)} payload ·{" "}
                   {cuft(loaded.length * TOTE.nominalVolumeCuFt)} of{" "}
-                  {cuft(f.availableVolumeCuFt)}
+                  {cuft(f.availableVolumeCuFt)} · stacked 2 across × 4 high,{" "}
+                  {computeStacking(loaded.length).rowsUsed} rows,{" "}
+                  {computeStacking(loaded.length).lengthLeftIn.toFixed(0)}″
+                  cabin length free
                 </p>
                 {loaded.map((t) => (
                   <div key={t.toteId} className="mt-3">
@@ -327,7 +363,22 @@ function FlightCard({ flight, totes }: { flight: Flight; totes: Tote[] }) {
       <p className="mt-3 text-xs text-zinc-500">
         {loaded.map((t) => t.toteId).join(", ") || "empty"}
       </p>
+      {loaded.length > 0 && <StackingLine count={loaded.length} />}
     </div>
+  );
+}
+
+function StackingLine({ count }: { count: number }) {
+  const st = computeStacking(count);
+  return (
+    <p className="mt-2 border-t border-zinc-800 pt-2 text-xs text-zinc-400">
+      Stacked {STACKING.totesAcross} across × {STACKING.layersHigh} high:{" "}
+      {st.rowsUsed} of {STACKING.maxRows} rows →{" "}
+      <span className="text-zinc-200">
+        {st.lengthLeftIn.toFixed(1)}″ of cabin length free
+      </span>{" "}
+      ({st.moreTotesFit} more totes fit by dimensions)
+    </p>
   );
 }
 
