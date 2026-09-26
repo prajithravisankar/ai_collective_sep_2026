@@ -39,6 +39,29 @@ export interface StackingReport {
   overCapacity: boolean; // more totes than the cabin can physically hold
 }
 
+// Physical slot of the i-th loaded tote. Loading order mirrors how a
+// loader actually works: front row first, left stack bottom-to-top,
+// then right stack, then the next row aft.
+export interface SlotPos {
+  row: number; // 0 = front (behind cockpit), max 10
+  side: number; // 0 = left, 1 = right
+  layer: number; // 0 = floor, 3 = top
+}
+
+export function stackingSlots(count: number): SlotPos[] {
+  const slots: SlotPos[] = [];
+  for (let i = 0; i < count; i++) {
+    const row = Math.floor(i / STACKING.totesPerRow);
+    const j = i % STACKING.totesPerRow;
+    slots.push({
+      row,
+      side: Math.floor(j / STACKING.layersHigh),
+      layer: j % STACKING.layersHigh,
+    });
+  }
+  return slots;
+}
+
 export function computeStacking(toteCount: number): StackingReport {
   const rowsUsed = Math.ceil(toteCount / STACKING.totesPerRow);
   const lengthUsedIn = rowsUsed * STACKING.rowDepthIn;

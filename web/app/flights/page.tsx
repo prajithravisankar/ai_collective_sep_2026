@@ -11,6 +11,7 @@ import { parseFlightCapacityCsv } from "@/lib/csv";
 import { planFlights, type LoadPlan } from "@/lib/flights";
 import { cuft, lb, pct } from "@/lib/format";
 import { sampleFlightCapacities } from "@/lib/sample-data";
+import CabinMap from "@/components/CabinMap";
 import { computeStacking, STACKING } from "@/lib/stacking";
 import { useAppStore } from "@/lib/store";
 import { AIRCRAFT, TOTE, type Flight, type Tote } from "@/lib/types";
@@ -320,6 +321,7 @@ function fullCaravan(): Flight {
 }
 
 function FlightCard({ flight, totes }: { flight: Flight; totes: Tote[] }) {
+  const [showMap, setShowMap] = useState(false);
   const loaded = flight.loadedToteIds
     .map((id) => totes.find((t) => t.toteId === id))
     .filter((t): t is Tote => !!t);
@@ -364,6 +366,15 @@ function FlightCard({ flight, totes }: { flight: Flight; totes: Tote[] }) {
         {loaded.map((t) => t.toteId).join(", ") || "empty"}
       </p>
       {loaded.length > 0 && <StackingLine count={loaded.length} />}
+      {loaded.length > 0 && (
+        <button
+          onClick={() => setShowMap(!showMap)}
+          className="mt-2 rounded border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:border-emerald-400"
+        >
+          {showMap ? "Hide cabin map" : "Cabin map (seat-map view)"}
+        </button>
+      )}
+      {showMap && loaded.length > 0 && <CabinMap totes={loaded} />}
     </div>
   );
 }
