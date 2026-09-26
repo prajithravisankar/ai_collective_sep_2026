@@ -16,6 +16,13 @@ import { executeTool, validateProposal, type Proposal } from "@/lib/ai-tools";
 import { planFlights } from "@/lib/flights";
 import { useAppStore } from "@/lib/store";
 import { useToast } from "@/lib/toast";
+import {
+  speak,
+  speechSupported,
+  startListening,
+  stopSpeaking,
+  type SpeechSession,
+} from "@/lib/voice";
 
 type Message =
   | { role: "user" | "assistant"; text: string; page: string }
@@ -37,7 +44,44 @@ export default function OperationsCopilot() {
   const [agentStatus, setAgentStatus] = useState("");
   const [error, setError] = useState("");
   const [remaining, setRemaining] = useState<number | null>(null);
+  const [voiceIn, setVoiceIn] = useState(false); // mic supported?
+  const [listening, setListening] = useState(false);
+  const [voiceReply, setVoiceReply] = useState(false);
+  const speechRef = useRef<SpeechSession | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setVoiceIn(speechSupported());
+  }, []);
+
+  // Nothing should keep talking after the panel closes.
+  useEffect(() => {
+    if (!open) {
+      stopSpeaking();
+      speechRef.current?.stop();
+    }
+  }, [open]);
+
+  function toggleMic() {
+    if (listening) {
+      speechRef.current?.stop();
+      return;
+    }
+    stopSpeaking();
+    setError("");
+    const session = startListening({
+      onInterim: (text) => setDraft(text),
+      onFinal: (text) => {
+        if (text.length > 1) void ask(text);
+      },
+      onEnd: () => setListening(false),
+      onError: (message) => setError(message),
+    });
+    if (session) {
+      speechRef.current = session;
+      setListening(true);
+    }
+  }
 
   // The landing page is a static pitch — no operational data to ground on.
   const onLanding = pathname === "/";
@@ -111,6 +155,7 @@ export default function OperationsCopilot() {
 
         if (data.answer) {
           setMessages((cur) => [...cur, { role: "assistant", text: data.answer!, page }]);
+          if (voiceReply) speak(data.answer);
           return;
         }
         throw new Error("The assistant returned an empty response.");
@@ -185,6 +230,22 @@ export default function OperationsCopilot() {
                 </p>
               </div>
               <div className="flex gap-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !voiceReply;
+                    setVoiceReply(next);
+                    if (!next) stopSpeaking();
+                  }}
+                  aria-pressed={voiceReply}
+                  aria-label={voiceReply ? "Turn off spoken replies" : "Read replies aloud"}
+                  title={voiceReply ? "Spoken replies on" : "Read replies aloud"}
+                  className={`rounded-md px-2 py-1 text-sm leading-none hover:bg-white/10 ${
+                    voiceReply ? "text-emerald-300" : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  {voiceReply ? "🔊" : "🔇"}
+                </button>
                 <button
                   type="button"
                   onClick={() => {
@@ -298,15 +359,43 @@ export default function OperationsCopilot() {
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
                   maxLength={1000}
-                  placeholder={`Ask about ${page.toLowerCase()}…`}
-                  className="input min-w-0 flex-1 text-sm"
+                  placeholder={listening ? "Listening… speak now" : `Ask about ${page.toLowerCase()}…`}
+                  className={`input min-w-0 flex-1 text-sm ${listening ? "border-emerald-400/70" : ""}`}
                 />
+                {voiceIn && (
+                  <button
+                    type="button"
+                    onClick={toggleMic}
+                    disabled={loading}
+                    aria-pressed={listening}
+                    aria-label={listening ? "Stop listening" : "Ask by voice"}
+                    title={listening ? "Stop listening" : "Ask by voice"}
+                    className={`btn px-3 text-sm disabled:opacity-50 ${
+                      listening ? "btn-primary agent-glow" : "btn-secondary"
+                    }`}
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      className={`h-4 w-4 ${listening ? "animate-pulse" : ""}`}
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden
+                    >
+                      <rect x="9" y="3" width="6" height="11" rx="3" />
+                      <path d="M5 11a7 7 0 0014 0M12 18v3" />
+                    </svg>
+                  </button>
+                )}
                 <button type="submit" disabled={loading || !draft.trim()} className="btn btn-primary px-3 text-sm disabled:opacity-50">
                   Send
                 </button>
               </form>
               <p className="mt-2 text-[10px] text-zinc-500">
                 Reads live data · changes need your confirm
+                {voiceIn ? " · 🎤 voice" : ""}
                 {remaining !== null ? ` · ${remaining} AI requests left` : ""}
               </p>
             </div>
