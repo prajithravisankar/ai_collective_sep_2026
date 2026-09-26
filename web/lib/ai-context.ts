@@ -16,7 +16,7 @@ export function copilotPage(pathname: string) {
 const suggestions: Record<string, string[]> = {
   "Order Entry": ["How many orders are waiting?", "Which orders are largest?", "How many households are in this batch?"],
   "Order Picking": ["Which tote is fullest?", "Were any orders split?", "How many totes did packing save?"],
-  "Flight Management": ["Which constraint is limiting us?", "Which orders rolled over?", "Summarize the flight plan.", "Which departure has spare capacity?"],
+  "Flight Management": ["What if departure 1 loses 200 lb?", "Which constraint is limiting us?", "Which orders rolled over?", "Summarize the flight plan."],
   "Data Dashboard": ["What are the main insights?", "Which products are heaviest?", "Which day had the most orders?"],
   "Order Tracking": ["How can I track an order?", "Which orders are still being picked?", "Are any orders awaiting a flight?"],
   Overview: ["What does Zamiigo do?", "What is the current batch status?", "How does the workflow work?"],
