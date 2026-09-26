@@ -1,4 +1,4 @@
-// Flight load planning — TO BUILD (Person A).
+// Flight load planning — TO BUILD (Person A2).
 //
 // Stage 1: one flight, everything fits. Report weight + space left.
 // Stage 2: several departures with limited capacity
@@ -17,7 +17,7 @@ export interface LoadPlan {
 }
 
 export function planFlights(totes: Tote[], flights: Flight[]): LoadPlan {
-  // TODO(Person A): fill departures in date order without exceeding
+  // TODO(Person A2): fill departures in date order without exceeding
   // available totes, payload or volume; report leftovers per flight.
   void totes;
   void flights;

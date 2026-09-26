@@ -62,11 +62,52 @@ that carries orders from entry → totes → plane, and it **must be deployed on
 before we write any logic. Every push after that updates the live URL. We are never
 in the "it works on my laptop" trap.
 
-## Suggested split (3 people)
+## The split (MVP first, 3D after)
 
-- **Person A:** CSV parsing + packing & flight algorithms (the brain).
-- **Person B:** Dashboard UI — 3 tabs, drag-and-drop totes, pick lists, manifests.
-- **Person C:** 3D cabin/tote view + deployment + polish.
+Person C's 3D view is **on hold until the MVP is built and deployed**. Until then
+we are 3 people on the MVP: A1 (packing logic), A2 (flight logic), B (UI).
+
+### Person A1 — Tote packing (`web/lib/packing.ts`)
+
+1. `packOrdersIntoTotes(orders)`: first-fit decreasing — sort orders big → small,
+   put each order in the first tote where its **weight AND volume** both fit.
+2. Split any order too large for one tote across several totes, item by item
+   (Stage 2 has 4 such orders — this is required, not optional).
+3. `assignTotesToCarts(totes, totesPerCart = 5)`: fill carts, but keep **all totes
+   of one order on the same cart**.
+4. For every tote report: total weight (lb) and fill % by volume.
+5. Constants (tote size, max weight) come from `web/lib/types.ts` — don't hard-code.
+
+### Person A2 — Flight planning (`web/lib/flights.ts`)
+
+1. Parse the flight capacity CSV (departure_id, date, available_totes,
+   available_payload_lb, available_volume_cuft) — add this to `web/lib/csv.ts`.
+2. `planFlights(totes, flights)`: fill departures in date order without going over
+   tote count, payload, or volume. An order can only fly on a departure **after**
+   its order date.
+3. Rollover: totes that don't fit wait for the next departure; report which ones.
+4. For every flight report: weight left, space left, and **which limit binds**
+   (weight vs volume vs tote count).
+5. Manifest data per flight: totes on board → orders in each tote → totals
+   (B turns this into a printable view).
+
+### Person B — Dashboard UI (`web/app/`)
+
+1. Order Entry tab: CSV upload → order table (id, household, items, weight,
+   status), status buttons entered → submitted → picking → picked, saved in
+   localStorage.
+2. Order Picking tab: tote cards (weight, fill %, orders inside), move orders
+   between totes by hand, cart view with printable pick list per cart
+   (grouped tote → household).
+3. Flight Management tab: departure list, totes per flight, weight/space left
+   bars, binding limit badge, rollover list, printable manifest.
+4. Works with A1/A2's functions — until those are ready, build against fake data
+   shaped like the types in `web/lib/types.ts`.
+
+### Person C — later, after MVP is deployed
+
+- 3D Caravan cabin with stacked totes + tote fill view (react-three-fiber,
+  deps already installed). Also states stacking assumptions + leftover space.
 
 ## Nice-to-haves if time is left
 

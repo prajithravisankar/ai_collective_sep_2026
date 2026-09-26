@@ -17,11 +17,12 @@ npm install
 npm run dev   # open http://localhost:3000
 ```
 
-## Where to build (see idea.md for the split)
+## Where to build (see idea.md for full task lists)
 
-- Person A (logic): `web/lib/packing.ts` and `web/lib/flights.ts` (stubs with TODOs)
-- Person B (UI): `web/app/entry/`, `web/app/picking/` pages
-- Person C (3D + deploy): `web/app/flights/` page, three.js view (deps installed)
+- Person A1 (packing logic): `web/lib/packing.ts` (stub with TODOs)
+- Person A2 (flight logic): `web/lib/flights.ts` (stub with TODOs)
+- Person B (UI): `web/app/entry/`, `web/app/picking/`, `web/app/flights/` pages
+- Person C (3D view): starts after the MVP is deployed
 
 Shared types are in `web/lib/types.ts`. CSV parsing already works: `web/lib/csv.ts`.
 

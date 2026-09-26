@@ -1,4 +1,4 @@
-// Tote packing (bin packing) — TO BUILD (Person A).
+// Tote packing (bin packing) — TO BUILD (Person A1).
 //
 // Plan: first-fit decreasing.
 // 1. Sort orders largest-first (by volume).
@@ -12,7 +12,7 @@
 import type { Cart, Order, Tote } from "./types";
 
 export function packOrdersIntoTotes(orders: Order[]): Tote[] {
-  // TODO(Person A): implement first-fit decreasing with order splitting.
+  // TODO(Person A1): implement first-fit decreasing with order splitting.
   void orders;
   throw new Error("packOrdersIntoTotes not implemented yet");
 }
@@ -21,7 +21,7 @@ export function assignTotesToCarts(
   totes: Tote[],
   totesPerCart: number = 5,
 ): Cart[] {
-  // TODO(Person A): keep every tote of a given order on the same cart.
+  // TODO(Person A1): keep every tote of a given order on the same cart.
   void totes;
   void totesPerCart;
   throw new Error("assignTotesToCarts not implemented yet");
