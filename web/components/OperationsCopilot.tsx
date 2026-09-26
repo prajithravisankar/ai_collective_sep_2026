@@ -213,7 +213,22 @@ export default function OperationsCopilot() {
 
   return (
     <>
-      {agentActive && <div className="agent-aura" aria-hidden />}
+      {agentActive && (
+        <>
+          <div className="agent-aura" aria-hidden />
+          <div className="agent-pill" role="status">
+            <span aria-hidden className="text-emerald-300">✦</span>
+            <span className="agent-pill-label">
+              {agentStatus && agentStatus !== "Thinking…"
+                ? `Agent working — ${agentStatus}`
+                : "Agent mode — reading the live plan"}
+            </span>
+            <span className="agent-pill-dots" aria-hidden>
+              <span /><span /><span />
+            </span>
+          </div>
+        </>
+      )}
       <div className="fixed bottom-4 right-4 z-50 print:hidden sm:bottom-6 sm:right-6">
         {open && (
           <section
