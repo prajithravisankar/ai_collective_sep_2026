@@ -4,6 +4,17 @@
 // the three workflow cards below take you to the work.
 
 import Link from "next/link";
+import { useMemo } from "react";
+import {
+  CAT,
+  ChartCard,
+  ColumnChart,
+  DataTable,
+  HBarList,
+  MeterList,
+  ORDINAL,
+  ShareBar,
+} from "@/components/charts";
 import { STATUS_DOT } from "@/components/ui";
 import { STATUS_FLOW, useAppStore } from "@/lib/store";
 import { AIRCRAFT } from "@/lib/types";
@@ -79,6 +90,88 @@ export default function Home() {
         ordersFlying
       : null;
   const subCount = Object.keys(store.substitutions).length;
+
+  // ---------- analytics ----------
+  const byDay = useMemo(() => {
+    const m = new Map<string, { orders: Set<string>; weight: number }>();
+    for (const o of store.orders) {
+      const d = o.orderDate || "batch";
+      const e = m.get(d) ?? { orders: new Set<string>(), weight: 0 };
+      e.orders.add(o.orderId);
+      e.weight += o.totalWeightLb;
+      m.set(d, e);
+    }
+    return [...m.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([label, e]) => ({
+        label: label.slice(5) || label,
+        value: e.weight,
+        orders: e.orders.size,
+      }));
+  }, [store.orders]);
+
+  const byCommunity = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const o of store.orders)
+      m.set(
+        o.destinationCommunity,
+        (m.get(o.destinationCommunity) ?? 0) + o.totalWeightLb,
+      );
+    return [...m.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([label, value], i) => ({
+        label,
+        value,
+        color: CAT[i % CAT.length],
+      }));
+  }, [store.orders]);
+
+  const fillBuckets = useMemo(() => {
+    const buckets = [
+      { label: "<70%", value: 0 },
+      { label: "70–85%", value: 0 },
+      { label: "85–95%", value: 0 },
+      { label: "95%+", value: 0 },
+    ];
+    for (const t of store.totes) {
+      const f = t.fillPercent;
+      buckets[f < 70 ? 0 : f < 85 ? 1 : f < 95 ? 2 : 3].value += 1;
+    }
+    return buckets;
+  }, [store.totes]);
+
+  const topProducts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const i of store.items)
+      m.set(i.productName, (m.get(i.productName) ?? 0) + i.weightLb);
+    return [...m.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([label, value]) => ({ label, value }));
+  }, [store.items]);
+
+  const utilization = useMemo(() => {
+    if (!store.plan) return [];
+    return store.plan.flights
+      .filter((f) => f.loadedToteIds.length > 0)
+      .map((f) => ({
+        label: f.destination
+          ? `${f.departureDate} · ${f.destination}`
+          : `#${f.departureId} · ${f.departureDate}`,
+        used: f.loadedToteIds.reduce(
+          (s2, id) =>
+            s2 + (store.totes.find((t) => t.toteId === id)?.weightLb ?? 0),
+          0,
+        ),
+        limit: f.availablePayloadLb,
+        detail: `${f.loadedToteIds.length} totes`,
+      }))
+      .map((d) => ({ ...d, detail: `${d.used.toFixed(0)}/${d.limit} lb · ${d.detail}` }));
+  }, [store.plan, store.totes]);
+
+  const statusSegs = statusCounts
+    .map(([label, n], i) => ({ label, value: n, color: ORDINAL[i] }))
+    .filter((seg) => seg.value > 0);
 
   return (
     <div>
@@ -166,6 +259,113 @@ export default function Home() {
             </p>
           </Tile>
         </div>
+      )}
+
+      {hasData && (
+        <section className="mt-8">
+          <p className="kicker">Analytics · this batch</p>
+          <div className="mt-3 grid gap-4 lg:grid-cols-2">
+            <ChartCard
+              title="Demand by day"
+              sub="weight placed per order day — how big is tomorrow's plane?"
+            >
+              <ColumnChart
+                data={byDay}
+                unit="lb"
+                tooltip={(d) => {
+                  const day = byDay.find((x) => x.label === d.label);
+                  return [
+                    d.label,
+                    `${Math.round(d.value).toLocaleString()} lb · ${day?.orders ?? 0} orders`,
+                  ];
+                }}
+              />
+              <DataTable
+                head={["Day", "Orders", "Weight (lb)"]}
+                rows={byDay.map((d) => [d.label, d.orders, d.value.toFixed(1)])}
+              />
+            </ChartCard>
+
+            <ChartCard
+              title="Order pipeline"
+              sub="every order's stage, entered → picked"
+            >
+              {statusSegs.length > 0 ? (
+                <>
+                  <ShareBar
+                    segments={statusSegs}
+                    format={(v) => `${v} orders`}
+                  />
+                  <DataTable
+                    head={["Status", "Orders"]}
+                    rows={statusCounts.map(([sName, n]) => [sName, n])}
+                  />
+                </>
+              ) : (
+                <p className="text-xs text-zinc-500">No orders yet.</p>
+              )}
+              <div className="mt-4 border-t border-edge pt-3">
+                <p className="mb-2 text-xs font-medium text-zinc-300">
+                  Heaviest products in the batch
+                </p>
+                <HBarList
+                  data={topProducts}
+                  format={(v) => `${v.toFixed(0)} lb`}
+                />
+              </div>
+            </ChartCard>
+
+            {byCommunity.length > 1 && (
+              <ChartCard
+                title="Load by community"
+                sub="who this batch flies to, by weight"
+              >
+                <ShareBar
+                  segments={byCommunity}
+                  format={(v) => `${v.toFixed(0)} lb`}
+                />
+                <DataTable
+                  head={["Community", "Weight (lb)"]}
+                  rows={byCommunity.map((c) => [c.label, c.value.toFixed(1)])}
+                />
+              </ChartCard>
+            )}
+
+            {store.totes.length > 0 && (
+              <ChartCard
+                title="Tote fill distribution"
+                sub="how tightly the packer fills each tote (by volume)"
+              >
+                <ColumnChart
+                  data={fillBuckets}
+                  unit="totes"
+                  tooltip={(d) => [d.label + " full", `${d.value} totes`]}
+                />
+                <DataTable
+                  head={["Fill", "Totes"]}
+                  rows={fillBuckets.map((b) => [b.label, b.value])}
+                />
+              </ChartCard>
+            )}
+
+            {utilization.length > 0 && (
+              <ChartCard
+                title="Payload used per departure"
+                sub="fill of each flight against its own payload limit"
+              >
+                <MeterList data={utilization} />
+                <DataTable
+                  head={["Departure", "Used (lb)", "Limit (lb)"]}
+                  rows={utilization.map((u) => [
+                    u.label,
+                    u.used.toFixed(0),
+                    u.limit,
+                  ])}
+                />
+              </ChartCard>
+            )}
+          </div>
+        </section>
       )}
 
       <div className="mt-8 grid gap-4 sm:grid-cols-3">
