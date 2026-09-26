@@ -34,6 +34,13 @@ const items = [
       <path d="M10.5 4.5a1.5 1.5 0 013 0V10l7 4v2l-7-2v4.5l2 1.5v1.5l-3.5-1-3.5 1V20l2-1.5V14l-7 2v-2l7-4V4.5z" />
     ),
   },
+  {
+    href: "/track",
+    label: "Track an Order",
+    icon: (
+      <path d="M11 19a8 8 0 100-16 8 8 0 000 16zM21 21l-4.35-4.35" />
+    ),
+  },
 ];
 
 function NavIcon({ children }: { children: React.ReactNode }) {
