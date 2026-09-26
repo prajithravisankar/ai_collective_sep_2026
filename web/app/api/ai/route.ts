@@ -4,6 +4,8 @@
 // FAILED calls count too, so we validate everything before spending one.
 
 export const runtime = "nodejs";
+// Gemini generations can take >10s; don't let the platform default kill us.
+export const maxDuration = 60;
 
 import { TOOL_SPEC } from "@/lib/ai-tools";
 
@@ -146,18 +148,35 @@ export async function POST(request: Request) {
   };
 
   try {
-    const upstream = await fetch(PROXY_URL, {
-      method: "POST",
-      headers: { "X-API-Key": apiKey, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents,
-        model: process.env.GEMINI_MODEL || "gemini-3-flash-preview",
-        response_schema: RESPONSE_SCHEMA,
-      }),
-      signal: AbortSignal.timeout(60000),
-    });
+    const call = () =>
+      fetch(PROXY_URL, {
+        method: "POST",
+        headers: { "X-API-Key": apiKey, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents,
+          model: process.env.GEMINI_MODEL || "gemini-3-flash-preview",
+          response_schema: RESPONSE_SCHEMA,
+        }),
+        signal: AbortSignal.timeout(45000),
+      });
+
+    // The proxy 500s transiently ("Generation or service error"); one
+    // retry recovers most of those. Never retry 4xx — failed calls
+    // count against the quota.
+    let upstream = await call().catch((e) => e as Error);
+    if (upstream instanceof Error || upstream.status >= 500) {
+      const first =
+        upstream instanceof Error ? upstream.message : `HTTP ${upstream.status}`;
+      console.error(`[ai] upstream attempt 1 failed: ${first}; retrying once`);
+      await new Promise((r) => setTimeout(r, 800));
+      const second = await call().catch((e) => e as Error);
+      if (second instanceof Error) throw second;
+      upstream = second;
+    }
 
     if (!upstream.ok) {
+      const detail = await upstream.text().catch(() => "");
+      console.error(`[ai] upstream ${upstream.status}: ${detail.slice(0, 300)}`);
       const friendly =
         upstream.status === 401
           ? "The AI key was rejected — check HACKATHON_API_KEY on the server."
@@ -165,7 +184,7 @@ export async function POST(request: Request) {
             ? "The team's AI request quota is used up."
             : upstream.status === 403
               ? "The AI account is deactivated — contact the organizers."
-              : "Gemini could not answer right now. Please try again.";
+              : `Gemini's service errored (HTTP ${upstream.status}) — it usually recovers on the next try.`;
       return Response.json({ error: friendly }, { status: 502 });
     }
 
@@ -224,9 +243,15 @@ export async function POST(request: Request) {
     const answer = typeof decision.answer === "string" ? clean(decision.answer) : "";
     if (!answer) throw new Error("Empty answer");
     return Response.json({ kind: "answer", answer, remaining });
-  } catch {
+  } catch (e) {
+    console.error(`[ai] request failed: ${e instanceof Error ? e.message : String(e)}`);
+    const timedOut = e instanceof Error && e.name === "TimeoutError";
     return Response.json(
-      { error: "Gemini could not answer right now. Please try again." },
+      {
+        error: timedOut
+          ? "Gemini took too long to respond — ask again, shorter questions help."
+          : "Gemini could not answer right now. Please try again.",
+      },
       { status: 502 },
     );
   }
