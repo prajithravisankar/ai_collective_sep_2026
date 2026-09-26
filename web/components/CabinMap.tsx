@@ -186,6 +186,30 @@ export default function CabinMap({ totes }: { totes: Tote[] }) {
             cargo door 50″×49″
           </text>
 
+          {Array.from({ length: STACKING.maxRows }).map((_, r) => (
+            <text
+              key={`rn-${r}`}
+              x={NOSE + r * (CELL + GAP) + CELL / 2}
+              y={PAD_Y - 6}
+              fontSize="9"
+              textAnchor="middle"
+              fill="rgb(113 113 122)"
+            >
+              {r + 1}
+            </text>
+          ))}
+          {["L", "R"].map((side, i) => (
+            <text
+              key={side}
+              x={NOSE - 12}
+              y={PAD_Y + i * (CELL + GAP) + CELL / 2 + 4}
+              fontSize="10"
+              textAnchor="middle"
+              fill="rgb(113 113 122)"
+            >
+              {side}
+            </text>
+          ))}
           <text x={NOSE} y={14} fontSize="9" fill="rgb(113 113 122)">
             FRONT
           </text>
@@ -193,6 +217,21 @@ export default function CabinMap({ totes }: { totes: Tote[] }) {
             AFT
           </text>
         </svg>
+      </div>
+
+      <div className="mt-2 flex flex-wrap items-center gap-4 text-[10px] text-zinc-500">
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-3 w-3 rounded-[3px] border border-emerald-500 bg-emerald-800" />
+          loaded tote (click for orders)
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-3 w-3 rounded-[3px] border border-dashed border-zinc-600" />
+          empty slot
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-0.5 w-4 bg-amber-500" />
+          cargo door
+        </span>
       </div>
 
       {selected && (

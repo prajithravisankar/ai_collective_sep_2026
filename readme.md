@@ -2,6 +2,8 @@ Team members: Dhara, Bhavya, and Prajith
 
 Submission for Ai collective hackathon september 2026.
 
+**Live app: https://ai-collective-sep-2026.vercel.app** (auto-deploys from `main`)
+
 ## Project structure
 
 - `idea.md` — the plan. Read this first.
