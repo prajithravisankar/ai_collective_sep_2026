@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { EmptyState } from "@/components/ui";
 import { lb, pct } from "@/lib/format";
+import { grabList } from "@/lib/grablist";
 import { subKey, useAppStore } from "@/lib/store";
 
 const PICKED_KEY = "zamiigo-picked-v1";
@@ -114,6 +115,27 @@ export default function HandheldPickPage() {
           />
         </div>
       </div>
+
+      <details className="card mt-4 p-3">
+        <summary className="cursor-pointer text-sm font-semibold">
+          Grab list — whole cart in one pass
+        </summary>
+        <ul className="mt-2 space-y-1 text-sm">
+          {grabList(cart, store.totes).map((row) => (
+            <li key={row.name} className="flex justify-between gap-3">
+              <span>
+                <span className="mr-1.5 font-mono text-xs text-emerald-400">
+                  {row.qty}×
+                </span>
+                {row.name}
+              </span>
+              <span className="shrink-0 text-right text-[10px] text-zinc-500">
+                {row.perTote.map((p) => `${p.toteId}×${p.qty}`).join(" ")}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </details>
 
       {cart.toteIds.map((toteId) => {
         const tote = store.totes.find((t) => t.toteId === toteId);

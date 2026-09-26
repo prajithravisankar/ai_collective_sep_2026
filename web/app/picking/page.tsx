@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { EmptyState, FillBar } from "@/components/ui";
 import { lb, pct } from "@/lib/format";
+import { grabList } from "@/lib/grablist";
 import { useAppStore } from "@/lib/store";
 import { TOTE, type Tote } from "@/lib/types";
 
@@ -196,6 +197,24 @@ export default function OrderPickingPage() {
               {cart.toteIds.length} totes · batch of {store.orders.length}{" "}
               orders · Webequie
             </p>
+            <h2 className="mt-3 border-b border-black text-base font-bold">
+              Grab list — pick these in one reach, then distribute
+            </h2>
+            <table className="mt-1 w-full text-xs">
+              <tbody>
+                {grabList(cart, store.totes).map((row) => (
+                  <tr key={row.name} className="border-b border-gray-300">
+                    <td className="w-10 py-0.5 font-bold">{row.qty}×</td>
+                    <td className="py-0.5">{row.name}</td>
+                    <td className="py-0.5 text-right text-gray-600">
+                      {row.perTote
+                        .map((p) => `${p.toteId}×${p.qty}`)
+                        .join("  ")}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
             {cart.toteIds.map((toteId) => {
               const tote = store.totes.find((t) => t.toteId === toteId);
               if (!tote) return null;
