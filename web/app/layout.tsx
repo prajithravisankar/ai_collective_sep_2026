@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import OperationsCopilot from "@/components/OperationsCopilot";
 import AppShell from "@/components/AppShell";
 import { AppStoreProvider } from "@/lib/store";
 import { ToastProvider } from "@/lib/toast";
@@ -19,6 +20,7 @@ export default function RootLayout({
         <AppStoreProvider>
           <ToastProvider>
             <AppShell>{children}</AppShell>
+            <OperationsCopilot />
           </ToastProvider>
         </AppStoreProvider>
       </body>
