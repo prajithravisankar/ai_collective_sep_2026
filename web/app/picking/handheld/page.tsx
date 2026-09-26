@@ -90,7 +90,7 @@ export default function HandheldPickPage() {
         </select>
       </div>
 
-      <div className="card sticky top-12 z-10 mt-3 bg-surface/95 p-3 backdrop-blur">
+      <div className="card sticky top-12 md:top-2 z-10 mt-3 bg-surface/95 p-3 backdrop-blur">
         <div className="flex justify-between text-sm">
           <span className="tabular-nums">
             {done} / {keys.length} picked

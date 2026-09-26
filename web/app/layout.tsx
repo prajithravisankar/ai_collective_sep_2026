@@ -17,10 +17,11 @@ export default function RootLayout({
       <body className="min-h-screen bg-background font-sans text-zinc-100 antialiased">
         <AppStoreProvider>
           <Nav />
-          <main className="mx-auto max-w-6xl px-4 py-8 print:max-w-none print:p-0">
-            {children}
-          </main>
-          <footer className="mt-8 border-t border-edge py-5 text-center text-xs leading-relaxed text-zinc-500 print:hidden">
+          <div className="md:pl-52 print:pl-0">
+            <main className="mx-auto max-w-6xl px-4 py-8 print:max-w-none print:p-0">
+              {children}
+            </main>
+            <footer className="mt-8 border-t border-edge py-5 text-center text-xs leading-relaxed text-zinc-500 print:hidden">
             Built on cited data — aircraft:{" "}
             <a
               href="https://www.tsb.gc.ca/eng/rapports-reports/aviation/2023/a23o0028/a23o0028.html"
@@ -47,7 +48,8 @@ export default function RootLayout({
               Flight Management tab
             </a>
             .
-          </footer>
+            </footer>
+          </div>
         </AppStoreProvider>
       </body>
     </html>
